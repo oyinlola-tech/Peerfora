@@ -1,37 +1,33 @@
-# Card Peerfora
+# Peerfora
 
-Card Peerfora is starting as one Rust modular monolith: one application process with clear ownership boundaries that can scale before any module needs to become a separate service.
+Peerfora is a Rust modular monolith. The first implemented domain is account authentication, with domain ownership kept explicit so it can scale within one application before any service extraction is needed.
 
-## Start the API
+## Start locally
+
+Requirements: Rust toolchain, Docker Compose, and a PostgreSQL container.
 
 ```sh
+docker compose up -d postgres
+cp .env.example .env
 cargo run
 ```
 
-The server listens at `127.0.0.1:3000` by default. Check it with:
+The server listens at `127.0.0.1:3000` by default. Startup connects to PostgreSQL and applies migrations. Check the HTTP process with:
 
 ```sh
 curl http://127.0.0.1:3000/health
 ```
 
-Copy `.env.example` to `.env` to change local settings. `PEERFORA_HOST`, `PEERFORA_PORT`, and `PEERFORA_LOG` are read by `configs/settings.rs`. Existing process environment variables take precedence. Set `PEERFORA_HOST=0.0.0.0` when the server must accept connections from outside the local machine.
+The health response reports that the HTTP process is responding; it is not a database health check. Set `PEERFORA_HOST=0.0.0.0` to accept connections from outside the local machine. Environment variables override `.env` values.
 
-The health response confirms only that the HTTP process is responding. It does not claim a database or other external service is connected.
+Email confirmation and password recovery need SMTP settings. Google and Apple sign-in need provider credentials and registered callback URLs. The API starts without these optional integrations, but their flows return a typed configuration error until configured. Country policies are configured with `PEERFORA_COUNTRY_POLICIES`; no country is enabled by default.
 
-## Ansofra layers
+## Ansofra structure
 
-The Rust folder names follow the live Uley conventions and the Ansofra architecture reference. The request path is:
+Startup follows `main.rs → index.rs → server.rs → app.rs → loaders/`. HTTP requests flow through `routes → middlewares → validations → controllers → services → repositories → models → database`.
 
-`client → server → app → loaders → routes → middlewares → validations → controllers → services → repositories → models → database`
+Services are grouped by domain. State-changing use cases belong in `services/<domain>/commands/`; read-only use cases belong in `services/<domain>/queries/`. Keep one use case per descriptively named file. Controllers handle HTTP, services enforce product rules, repositories own SQL, and models describe persisted data and shared app state.
 
-The response returns through the same layers. `dtos` define request and response shapes; `interfaces` define Rust traits and contracts; `enums` define closed sets of domain states; `constants` contain fixed values; `errors` centralize application errors; `utils` hold small generic helpers; and `jobs` hold background work. Each layer has a top-level module under `src/` and is declared by `src/lib.rs`.
+Other folders have explicit jobs: `configs/` parses deployment settings, `constants/` holds source-level fixed values, `dtos/` defines API shapes, `enums/` defines closed domain values, `errors/` maps typed failures to safe HTTP responses, `interfaces/` defines real dependency boundaries, `integrations/` implements external adapters, `jobs/` runs background work, `utils/` holds stateless helpers, and `validations/` checks untrusted input syntax.
 
-Use names that state the action, such as `create_community`, `find_account_by_email`, and `show_health`. Keep HTTP handling in controllers, rules in services, and database queries in repositories. Keep comments out of source unless a non-obvious rule truly needs explanation.
-
-## Modular monolith boundaries
-
-Services are organized by domain, with `commands/` for changes and `queries/` for reads, following Uley's service layout. Routes, controllers, repositories, models, and validations use domain-named files at their layer. A domain must use another domain's public service or interface; it must not reach into another domain's repository or tables.
-
-PostgreSQL is the planned source of truth, but database connection, migrations, and product persistence are not implemented yet. The health endpoint is the only live endpoint. Empty layer modules are reserved for their Ansofra responsibility and will receive real code when a product requirement needs them; they do not contain fake implementations.
-
-See [`docs/architecture.md`](docs/architecture.md) for the folder map and scaling rules.
+Read [AGENTS.md](AGENTS.md) before changing this repository. It contains the full working rules and folder responsibilities. See [docs/architecture.md](docs/architecture.md) for current flows and [docs/endpoints.md](docs/endpoints.md) for the full API endpoint reference.
