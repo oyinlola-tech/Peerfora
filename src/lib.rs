@@ -7,6 +7,7 @@ pub mod dtos;
 pub mod enums;
 pub mod errors;
 pub mod index;
+pub mod integrations;
 pub mod interfaces;
 pub mod jobs;
 pub mod loaders;
