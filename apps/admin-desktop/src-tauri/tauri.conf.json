@@ -1,0 +1,31 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Peerfora Administration",
+  "version": "0.1.0",
+  "identifier": "com.peerfora.admin.desktop",
+  "build": {
+    "beforeDevCommand": "trunk serve --address 127.0.0.1 --port 1421 --config ../frontend/Trunk.toml",
+    "beforeBuildCommand": "trunk build --release --config ../frontend/Trunk.toml",
+    "devUrl": "http://127.0.0.1:1421",
+    "frontendDist": "../frontend/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "admin-main",
+        "title": "Peerfora Administration",
+        "width": 1280,
+        "height": 840,
+        "minWidth": 900,
+        "minHeight": 640
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self' http://127.0.0.1:3000"
+    }
+  },
+  "bundle": {
+    "active": false,
+    "targets": "all"
+  }
+}
