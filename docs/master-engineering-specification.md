@@ -41,6 +41,10 @@ If a requirement is missing, ambiguous, or conflicts with a higher-priority inst
 - Preserve user changes. Do not commit, push, publish, deploy, provision paid resources, or perform destructive repository operations unless the user explicitly authorizes that action.
 - Add meaningful tests for implemented behavior when the task and environment permit. Run only checks that are relevant and authorized for the task, report their actual results, and identify checks blocked by unavailable toolchains or dependencies. Never describe uncompiled or untested code as verified.
 
+### Current documentation ownership
+
+The current repository maintains `README.md`, `AGENTS.md`, `SECURITY.md`, `docs/architecture.md`, `docs/endpoints.md`, `docs/database.md`, and `docs/status.md` as its primary engineering documents. This current-repository rule supersedes the legacy nested documentation tree later in this preserved roadmap. Keep the master specification, ADRs, source product requirements, licenses, and genuine platform build instructions.
+
 ### How to apply the roadmap
 
 Before implementation, inspect `git status`, read `AGENTS.md`, the relevant architecture and endpoint documentation, the relevant source files, and the applicable PRD material. Implement only the requested phase or vertical slice. Keep future platform requirements visible as planned work, not as code that appears complete. Update implementation status and limitations whenever the change affects what the repository actually supports.
@@ -2307,70 +2311,22 @@ A workflow must not report success for a platform that it silently skipped.
 
 ## 38. Required documentation
 
-Create and maintain:
+For the current Peerfora checkout, maintain these primary engineering documents:
 
 ```text
 README.md
 AGENTS.md
 SECURITY.md
 CONTRIBUTING.md
-
-docs/architecture/overview.md
-docs/architecture/monorepo.md
-docs/architecture/backend.md
-docs/architecture/client-sdk.md
-docs/architecture/realtime.md
-docs/architecture/widgets.md
-docs/architecture/ai.md
-
-docs/product/requirements-traceability.md
-docs/product/feature-status.md
-
-docs/database/schema.md
-docs/database/migrations.md
-
-docs/api/authentication.md
-docs/api/authorization.md
-docs/api/errors.md
-docs/api/webhooks.md
-
-docs/security/threat-model.md
-docs/security/admin-security.md
-docs/security/privacy.md
-
-docs/platforms/web.md
-docs/platforms/ios.md
-docs/platforms/android.md
-docs/platforms/desktop.md
-docs/platforms/admin-desktop.md
-docs/platforms/widgets.md
-
-docs/deployment/local-development.md
-docs/deployment/production-readiness.md
-
-docs/progress/implementation-report.md
-docs/progress/known-limitations.md
+docs/architecture.md
+docs/endpoints.md
+docs/database.md
+docs/status.md
 ```
 
-Create architecture decision records for important decisions.
+Preserve architecture decision records, the original PRD and master specification, licenses, genuine deployment instructions, and platform-specific build instructions. Consolidate phase audits, feature status, database notes, security notes, and API conventions into the primary documents rather than creating a separate Markdown file for every feature or implementation phase.
 
-Document:
-
-- What was implemented.
-- Why major technical decisions were made.
-- Dependency choices.
-- Security assumptions.
-- Build instructions.
-- Testing instructions.
-- Unresolved requirements.
-- Platform limitations.
-- Future integration requirements.
-
-Keep documentation aligned with real code.
-
-Do not describe planned features as implemented.
-
----
+Document actual behavior, major decisions, dependency/security assumptions, build/test commands, unresolved requirements, and platform limits. Keep `docs/endpoints.md` authoritative for registered routes. Do not describe planned features as implemented.
 
 ## 39. Implementation sequence
 
