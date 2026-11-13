@@ -1,0 +1,5 @@
+Country-code snapshot source: iso-codes 4.20.1-1, ISO 3166-1 JSON catalogue.
+Upstream: https://salsa.debian.org/iso-codes-team/iso-codes
+License: LGPL-2.1-or-later
+Copyright includes Alastair McKinstry, Christian Perrier, and Dr. Tobias Quathamer.
+The snapshot is reference data and does not state legal or operational availability.

@@ -1,0 +1,8 @@
+iso-codes package version: 4.20.1-1
+ISO 3166-1 territory records: 249
+Snapshot generated: 2026-11-13
+Country-code snapshot source: iso-codes 4.20.1-1, ISO 3166-1 JSON catalogue.
+Upstream: https://salsa.debian.org/iso-codes-team/iso-codes
+License: LGPL-2.1-or-later
+Copyright includes Alastair McKinstry, Christian Perrier, and Dr. Tobias Quathamer.
+The snapshot is reference data and does not state legal or operational availability.
