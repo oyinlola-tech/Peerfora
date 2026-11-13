@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: peerfora
       POSTGRES_PASSWORD: peerfora
     ports:
-      - "5432:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - peerfora-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -15,5 +15,46 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:8.10.3-alpine
+    profiles: ["cache"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - peerfora-redis-data:/data
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.55.0
+    profiles: ["search"]
+    environment:
+      MEILI_ENV: development
+      MEILI_MASTER_KEY: peerfora-local-development-key
+      MEILI_NO_ANALYTICS: "true"
+    ports:
+      - "127.0.0.1:7700:7700"
+    volumes:
+      - peerfora-search-data:/meili_data
+
+  s3mock:
+    image: adobe/s3mock:5.2.3
+    profiles: ["object-storage"]
+    ports:
+      - "127.0.0.1:9090:9090"
+    environment:
+      COM_ADOBE_TESTING_S3MOCK_STORE_ROOT: /s3mockroot
+    volumes:
+      - peerfora-s3mock-data:/s3mockroot
+
+  mailpit:
+    image: axllent/mailpit:v1.33.1
+    profiles: ["email"]
+    ports:
+      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
+
 volumes:
   peerfora-postgres-data:
+  peerfora-redis-data:
+  peerfora-search-data:
+  peerfora-s3mock-data:

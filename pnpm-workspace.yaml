@@ -1,0 +1,5 @@
+packages:
+  - apps/web
+  - packages/design-tokens
+allowBuilds:
+  "@parcel/watcher": false

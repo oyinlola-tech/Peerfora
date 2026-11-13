@@ -1,0 +1,8 @@
+{
+  "name": "peerfora-monorepo",
+  "private": true,
+  "packageManager": "pnpm@11.24.0",
+  "scripts": {
+    "web:css": "pnpm --dir apps/web run build:css"
+  }
+}
