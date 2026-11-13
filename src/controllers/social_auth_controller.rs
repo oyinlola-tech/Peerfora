@@ -86,7 +86,7 @@ pub async fn finish_social_sign_in(
     );
     match result {
         SocialAuthorizationResult::SignedIn {
-            account,
+            account: _,
             session_token,
         } => {
             response_headers.append(

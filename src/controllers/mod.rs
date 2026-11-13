@@ -1,6 +1,9 @@
+pub mod academic_directory_controller;
 pub mod account_recovery_controller;
 pub mod account_registration_controller;
 pub mod account_session_controller;
 pub mod auth_cookie;
+pub mod community_controller;
 pub mod health_controller;
+pub mod profile_controller;
 pub mod social_auth_controller;

@@ -78,7 +78,8 @@ pub async fn find_account_by_social_identity(
             a.password_hash, a.email_verified_at
         FROM accounts a
         JOIN account_social_identities i ON i.account_id = a.id
-        WHERE i.provider = $1 AND i.provider_subject = $2",
+        WHERE i.provider = $1 AND i.provider_subject = $2
+            AND a.account_status = 'active'",
     )
     .bind(provider)
     .bind(provider_subject)
@@ -201,10 +202,10 @@ pub async fn create_social_session(
 }
 
 fn map_database_error(error: sqlx::Error) -> AppError {
-    if let sqlx::Error::Database(database_error) = &error {
-        if database_error.code().as_deref() == Some("23505") {
-            return AccountAuthError::AccountAlreadyExists.into();
-        }
+    if let sqlx::Error::Database(database_error) = &error
+        && database_error.code().as_deref() == Some("23505")
+    {
+        return AccountAuthError::AccountAlreadyExists.into();
     }
     AppError::Internal
 }

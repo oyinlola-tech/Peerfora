@@ -1,0 +1,13 @@
+pub const MAX_JSON_REQUEST_BODY_BYTES: usize = 1_048_576;
+pub const X_CONTENT_TYPE_OPTIONS_HEADER: &str = "x-content-type-options";
+pub const X_CONTENT_TYPE_OPTIONS_VALUE: &str = "nosniff";
+pub const REFERRER_POLICY_HEADER: &str = "referrer-policy";
+pub const REFERRER_POLICY_VALUE: &str = "no-referrer";
+pub const X_FRAME_OPTIONS_HEADER: &str = "x-frame-options";
+pub const X_FRAME_OPTIONS_VALUE: &str = "DENY";
+pub const CACHE_CONTROL_HEADER: &str = "cache-control";
+pub const CACHE_CONTROL_VALUE: &str = "no-store";
+pub const CONTENT_SECURITY_POLICY_HEADER: &str = "content-security-policy";
+pub const CONTENT_SECURITY_POLICY_VALUE: &str = "default-src 'none'; frame-ancestors 'none'";
+pub const STRICT_TRANSPORT_SECURITY_HEADER: &str = "strict-transport-security";
+pub const STRICT_TRANSPORT_SECURITY_VALUE: &str = "max-age=31536000";

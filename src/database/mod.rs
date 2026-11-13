@@ -2,6 +2,8 @@ use sqlx::{PgPool, postgres::PgPoolOptions};
 
 use crate::errors::app_error::AppError;
 
+pub mod reference_data;
+
 pub async fn connect_database(database_url: &str) -> Result<PgPool, AppError> {
     if database_url.is_empty() {
         return Err(AppError::DatabaseConfigurationMissing);
@@ -15,5 +17,6 @@ pub async fn connect_database(database_url: &str) -> Result<PgPool, AppError> {
         .run(&pool)
         .await
         .map_err(|_| AppError::DatabaseMigrationFailed)?;
+    reference_data::install_country_snapshot(&pool).await?;
     Ok(pool)
 }

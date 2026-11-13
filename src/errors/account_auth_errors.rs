@@ -13,6 +13,10 @@ pub fn get_account_auth_error_response(error: AccountAuthError) -> (StatusCode, 
             StatusCode::BAD_REQUEST,
             "Country code must be a two-letter country code",
         ),
+        AccountAuthError::CountryCodeUnknown => (
+            StatusCode::BAD_REQUEST,
+            "Country code is not in the country directory",
+        ),
         AccountAuthError::PasswordLengthInvalid => (
             StatusCode::BAD_REQUEST,
             "Password must be between 12 and 128 bytes",
@@ -28,10 +32,6 @@ pub fn get_account_auth_error_response(error: AccountAuthError) -> (StatusCode, 
         AccountAuthError::BirthDateInvalid => {
             (StatusCode::BAD_REQUEST, "Date of birth must use YYYY-MM-DD")
         }
-        AccountAuthError::CountryUnavailable => (
-            StatusCode::FORBIDDEN,
-            "Registration is not available in this country",
-        ),
         AccountAuthError::AgeRequirementNotMet => {
             (StatusCode::FORBIDDEN, "You do not meet the age requirement")
         }

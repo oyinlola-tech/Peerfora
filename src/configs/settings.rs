@@ -22,6 +22,8 @@ pub struct Settings {
     pub log_filter: String,
     pub database_url: String,
     pub cookie_secure: bool,
+    pub production_environment: bool,
+    pub admin_mfa_encryption_key: Option<String>,
     pub country_policies: HashMap<String, CountryPolicy>,
     pub smtp_host: Option<String>,
     pub smtp_port: u16,
@@ -41,14 +43,15 @@ pub fn load_settings() -> Result<Settings, Box<dyn std::error::Error>> {
     let database_url = env::var("DATABASE_URL").unwrap_or_default();
     let production_environment = env::var("PEERFORA_ENV")
         .is_ok_and(|environment| environment.eq_ignore_ascii_case("production"));
+    let admin_mfa_encryption_key = read_optional_setting("PEERFORA_ADMIN_MFA_ENCRYPTION_KEY");
     let cookie_secure = env::var("PEERFORA_COOKIE_SECURE")
         .map(|value| value == "true")
         .unwrap_or(false)
         || production_environment;
-    let country_policies = env::var("PEERFORA_COUNTRY_POLICIES")
-        .map(|value| serde_json::from_str(&value))
-        .transpose()?
-        .unwrap_or_default();
+    let country_policies = match env::var("PEERFORA_COUNTRY_POLICIES") {
+        Ok(value) => serde_json::from_str(&value)?,
+        Err(_) => HashMap::new(),
+    };
     let smtp_host = read_optional_setting("PEERFORA_SMTP_HOST");
     let smtp_port = env::var("PEERFORA_SMTP_PORT").unwrap_or_else(|_| "587".to_owned());
     let smtp_username = read_optional_setting("PEERFORA_SMTP_USERNAME");
@@ -65,6 +68,8 @@ pub fn load_settings() -> Result<Settings, Box<dyn std::error::Error>> {
         log_filter,
         database_url,
         cookie_secure,
+        production_environment,
+        admin_mfa_encryption_key,
         country_policies,
         smtp_host,
         smtp_port: smtp_port.parse()?,

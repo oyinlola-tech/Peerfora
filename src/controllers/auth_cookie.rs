@@ -97,10 +97,8 @@ fn create_cookie(
     max_age_seconds: u32,
 ) -> Result<HeaderValue, AppError> {
     let secure_flag = if state.cookie_secure { "; Secure" } else { "" };
-    let cookie_value = format!(concat!(
-        "{name}={value}; Path={path}; ",
-        "HttpOnly; SameSite=Lax; ",
-        "Max-Age={max_age_seconds}{secure_flag}"
-    ));
+    let cookie_value = format!(
+        "{name}={value}; Path={path}; HttpOnly; SameSite=Lax; Max-Age={max_age_seconds}{secure_flag}"
+    );
     HeaderValue::from_str(&cookie_value).map_err(|_| AppError::Internal)
 }

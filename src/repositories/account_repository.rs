@@ -43,7 +43,8 @@ pub async fn find_account_by_email(
 ) -> Result<Option<Account>, AppError> {
     sqlx::query_as::<_, Account>(
         "SELECT id, email, username, display_name, password_hash,
-            email_verified_at FROM accounts WHERE email = $1",
+            email_verified_at FROM accounts
+        WHERE lower(email) = lower($1) AND account_status = 'active'",
     )
     .bind(email)
     .fetch_optional(pool)
@@ -176,7 +177,8 @@ pub async fn find_account_by_session(
             a.password_hash, a.email_verified_at
         FROM accounts a
         JOIN account_sessions s ON s.account_id = a.id
-        WHERE s.token_hash = $1 AND s.expires_at > now()",
+        WHERE s.token_hash = $1 AND s.expires_at > now()
+            AND a.account_status = 'active'",
     )
     .bind(token_hash)
     .fetch_optional(pool)
@@ -218,10 +220,10 @@ pub async fn delete_expired_account_auth_tokens(pool: &PgPool) -> Result<(), App
 }
 
 fn map_database_error(error: sqlx::Error) -> AppError {
-    if let sqlx::Error::Database(database_error) = &error {
-        if database_error.code().as_deref() == Some("23505") {
-            return AccountAuthError::AccountAlreadyExists.into();
-        }
+    if let sqlx::Error::Database(database_error) = &error
+        && database_error.code().as_deref() == Some("23505")
+    {
+        return AccountAuthError::AccountAlreadyExists.into();
     }
     AppError::Internal
 }
