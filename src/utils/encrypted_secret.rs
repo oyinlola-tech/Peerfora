@@ -1,4 +1,7 @@
-use aes_gcm::{Aes256Gcm, Nonce, aead::{Aead, KeyInit}};
+use aes_gcm::{
+    Aes256Gcm, Nonce,
+    aead::{Aead, KeyInit, consts::U12},
+};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use rand::{RngCore, rngs::OsRng};
 
@@ -11,8 +14,9 @@ pub fn encrypt_secret(secret: &[u8], encoded_key: &str) -> Result<String, AppErr
     let cipher = Aes256Gcm::new_from_slice(&key).map_err(|_| AppError::Internal)?;
     let mut nonce_bytes = vec![0_u8; NONCE_BYTES];
     OsRng.fill_bytes(&mut nonce_bytes);
+    let nonce = Nonce::<U12>::try_from(nonce_bytes.as_slice()).map_err(|_| AppError::Internal)?;
     let encrypted = cipher
-        .encrypt(Nonce::from_slice(&nonce_bytes), secret)
+        .encrypt(&nonce, secret)
         .map_err(|_| AppError::Internal)?;
     nonce_bytes.extend_from_slice(&encrypted);
     Ok(STANDARD.encode(nonce_bytes))
@@ -28,8 +32,9 @@ pub fn decrypt_secret(encrypted_secret: &str, encoded_key: &str) -> Result<Vec<u
     }
     let (nonce_bytes, encrypted) = ciphertext.split_at(NONCE_BYTES);
     let cipher = Aes256Gcm::new_from_slice(&key).map_err(|_| AppError::Internal)?;
+    let nonce = Nonce::<U12>::try_from(nonce_bytes).map_err(|_| AppError::Internal)?;
     cipher
-        .decrypt(Nonce::from_slice(nonce_bytes), encrypted)
+        .decrypt(&nonce, encrypted)
         .map_err(|_| AppError::Internal)
 }
 

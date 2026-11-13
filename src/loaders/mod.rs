@@ -7,6 +7,6 @@ use axum::Router;
 
 pub fn register_loaders(state: AppState) -> Router {
     jobs_loader::start_background_jobs(state.database.clone());
-    let app = routes_loader::register_routes(Router::new());
+    let app = routes_loader::register_routes(Router::new(), state.clone());
     middleware_loader::register_middlewares(app, state.clone()).with_state(state)
 }

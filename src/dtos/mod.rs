@@ -1,4 +1,5 @@
 pub mod academic_directory_requests;
+pub mod admin_auth;
 pub mod auth_requests;
 pub mod auth_responses;
 pub mod community_queries;

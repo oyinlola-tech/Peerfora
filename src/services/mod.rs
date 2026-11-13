@@ -1,5 +1,6 @@
 pub mod academic_directory;
 pub mod accounts;
+pub mod admin_auth;
 pub mod communities;
 pub mod discovery;
 pub mod discussions;

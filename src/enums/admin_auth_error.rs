@@ -8,4 +8,5 @@ pub enum AdminAuthError {
     InvalidBootstrapInput,
     BootstrapAlreadyCompleted,
     PasswordTooShort,
+    AuthenticationUnavailable,
 }

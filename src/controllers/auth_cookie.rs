@@ -89,6 +89,34 @@ pub fn clear_pending_social_cookie(state: &AppState) -> Result<HeaderValue, AppE
     )
 }
 
+pub fn create_administrator_session_cookie(
+    state: &AppState,
+    token: &str,
+) -> Result<HeaderValue, AppError> {
+    let secure_flag = if state.cookie_secure { "; Secure" } else { "" };
+    let lifetime_seconds = crate::constants::admin_auth::ADMIN_SESSION_LIFETIME_HOURS * 3600;
+    let cookie_value = format!(
+        "{}={}; Path={}; HttpOnly; SameSite=Strict; Max-Age={}{}",
+        crate::constants::admin_auth::ADMIN_SESSION_COOKIE_NAME,
+        token,
+        crate::constants::admin_auth::ADMIN_SESSION_COOKIE_PATH,
+        lifetime_seconds,
+        secure_flag,
+    );
+    HeaderValue::from_str(&cookie_value).map_err(|_| AppError::Internal)
+}
+
+pub fn clear_administrator_session_cookie(state: &AppState) -> Result<HeaderValue, AppError> {
+    let secure_flag = if state.cookie_secure { "; Secure" } else { "" };
+    let cookie_value = format!(
+        "{}=; Path={}; HttpOnly; SameSite=Strict; Max-Age=0{}",
+        crate::constants::admin_auth::ADMIN_SESSION_COOKIE_NAME,
+        crate::constants::admin_auth::ADMIN_SESSION_COOKIE_PATH,
+        secure_flag,
+    );
+    HeaderValue::from_str(&cookie_value).map_err(|_| AppError::Internal)
+}
+
 fn create_cookie(
     state: &AppState,
     name: &str,

@@ -4,15 +4,18 @@ use crate::enums::admin_auth_error::AdminAuthError;
 
 pub fn get_admin_auth_error_response(error: AdminAuthError) -> (StatusCode, &'static str) {
     match error {
-        AdminAuthError::InvalidCredentials => {
-            (StatusCode::UNAUTHORIZED, "Invalid administrator credentials")
-        }
-        AdminAuthError::InvalidChallenge => {
-            (StatusCode::UNAUTHORIZED, "Administrator challenge is invalid or expired")
-        }
-        AdminAuthError::InvalidMfaCode => {
-            (StatusCode::UNAUTHORIZED, "Administrator verification failed")
-        }
+        AdminAuthError::InvalidCredentials => (
+            StatusCode::UNAUTHORIZED,
+            "Invalid administrator credentials",
+        ),
+        AdminAuthError::InvalidChallenge => (
+            StatusCode::UNAUTHORIZED,
+            "Administrator challenge is invalid or expired",
+        ),
+        AdminAuthError::InvalidMfaCode => (
+            StatusCode::UNAUTHORIZED,
+            "Administrator verification failed",
+        ),
         AdminAuthError::InvalidSession => {
             (StatusCode::UNAUTHORIZED, "Administrator session is invalid")
         }
@@ -20,9 +23,10 @@ pub fn get_admin_auth_error_response(error: AdminAuthError) -> (StatusCode, &'st
             StatusCode::SERVICE_UNAVAILABLE,
             "Administrator multifactor authentication is unavailable",
         ),
-        AdminAuthError::InvalidBootstrapInput => {
-            (StatusCode::BAD_REQUEST, "Administrator bootstrap input is invalid")
-        }
+        AdminAuthError::InvalidBootstrapInput => (
+            StatusCode::BAD_REQUEST,
+            "Administrator bootstrap input is invalid",
+        ),
         AdminAuthError::BootstrapAlreadyCompleted => (
             StatusCode::CONFLICT,
             "Administrator bootstrap has already been completed",
@@ -30,6 +34,10 @@ pub fn get_admin_auth_error_response(error: AdminAuthError) -> (StatusCode, &'st
         AdminAuthError::PasswordTooShort => (
             StatusCode::BAD_REQUEST,
             "Administrator password must contain at least 16 characters",
+        ),
+        AdminAuthError::AuthenticationUnavailable => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "Administrator authentication is unavailable",
         ),
     }
 }
