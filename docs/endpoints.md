@@ -284,4 +284,4 @@ Registration and social signup are disabled for countries without an explicit po
 }
 ```
 
-The example is a schema illustration, not an enabled policy recommendation. When `age_assurance_required` is `true`, signup currently fails with `503` because no age-assurance integration is implemented.
+The example is a schema illustration, not an enabled policy recommendation. Peerfora's launch policy enforces a global minimum age of 18; a country policy may raise this minimum but cannot lower it. When `age_assurance_required` is `true`, signup currently fails with `503` because no age-assurance integration is implemented.

@@ -36,7 +36,7 @@ The route chooses an HTTP handler. Middleware handles cross-cutting request beha
 | `utils/` | Stateless reusable helpers | Argon2 password hashing and one-time token generation/hashing |
 | `validations/` | Incoming data syntax checks | Email, date format, and two-letter country-code validation |
 
-`communities`, `discussions`, `discovery`, `moderation`, and `notifications` are future product domains from the PRD; they have no implemented behavior yet. Do not fill their layers with placeholders. The background job is used for cleanup; email remains request-driven until a durable delivery queue is required.
+`communities`, `discussions`, `discovery`, `moderation`, `notifications`, `institutions`, `academic_directory`, `memberships`, `voting`, `reputation`, `feeds`, and `bookmarks` are future product domains. Their command/query directories are structural placeholders with no implemented use cases. Add behavior only with the corresponding feature. The background job is used for cleanup; email remains request-driven until a durable delivery queue is required.
 
 ## Account-auth flow
 
@@ -54,6 +54,8 @@ The API remains one deployable Rust modular monolith. A domain may call another 
 ## Endpoint reference
 
 Every registered endpoint, with its request and response contracts, authentication, cookies, and errors, is documented in [endpoints.md](endpoints.md). Update that reference alongside route, DTO, or error changes.
+
+The product and platform roadmap is in [master-engineering-specification.md](master-engineering-specification.md). Its opening codebase-alignment section defines how roadmap items fit the current API structure and implementation phases.
 
 ## Not implemented yet
 
