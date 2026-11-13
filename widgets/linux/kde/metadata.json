@@ -1,0 +1,11 @@
+{
+  "KPlugin": {
+    "Id": "com.peerfora.communitypreview",
+    "Name": "Peerfora community preview",
+    "Description": "A development preview for Peerfora community activity.",
+    "Version": "0.1.0",
+    "License": "Proprietary"
+  },
+  "KPackageStructure": "Plasma/Applet",
+  "X-Plasma-API-Minimum-Version": "6.0"
+}

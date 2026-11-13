@@ -1,0 +1,6 @@
+{
+  "uuid": "peerfora-community@peerfora.example",
+  "name": "Peerfora community preview",
+  "description": "A development preview for Peerfora community activity.",
+  "shell-version": ["46", "47", "48", "49"]
+}

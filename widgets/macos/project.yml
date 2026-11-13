@@ -1,0 +1,17 @@
+name: PeerforaMacWidgets
+options:
+  bundleIdPrefix: com.peerfora
+  deploymentTarget:
+    macOS: "14.0"
+targets:
+  PeerforaMacWidgets:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: PeerforaMacWidgets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.peerfora.student.macwidgets
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        SKIP_INSTALL: YES
