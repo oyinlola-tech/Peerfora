@@ -1,0 +1,8 @@
+:root {
+  color-scheme: light dark;
+  --peerfora-color-background: Canvas;
+  --peerfora-color-foreground: CanvasText;
+  --peerfora-color-border: color-mix(in srgb, CanvasText 24%, Canvas);
+  --peerfora-font-family: system-ui, sans-serif;
+  --peerfora-content-width: 72rem;
+}
