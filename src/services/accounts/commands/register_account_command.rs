@@ -11,7 +11,7 @@ use crate::{
     errors::app_error::AppError,
     models::account::Account,
     repositories::account_repository,
-    services::accounts::account_eligibility::require_account_age_eligibility,
+    services::accounts::commands::account_eligibility::require_account_age_eligibility,
     utils::{
         one_time_token::{create_one_time_token, hash_one_time_token},
         password::create_password_hash,

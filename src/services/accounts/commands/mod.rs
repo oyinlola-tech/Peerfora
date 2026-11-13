@@ -1,3 +1,4 @@
+pub mod account_eligibility;
 pub mod complete_social_signup_command;
 pub mod end_account_session_command;
 pub mod finish_social_sign_in_command;
@@ -7,5 +8,6 @@ pub mod request_password_reset_command;
 pub mod reset_account_password_command;
 pub mod send_account_email_command;
 pub mod social_auth_types;
+pub mod social_oidc_client;
 pub mod start_social_sign_in_command;
 pub mod verify_account_email_command;

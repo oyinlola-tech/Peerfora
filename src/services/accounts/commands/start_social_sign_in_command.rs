@@ -4,7 +4,7 @@ use sqlx::PgPool;
 use crate::{
     configs::settings::OidcProviderSettings, enums::social_provider::SocialProvider,
     errors::app_error::AppError, repositories::social_auth_repository,
-    services::accounts::social_oidc_client::create_openid_client,
+    services::accounts::commands::social_oidc_client::create_openid_client,
     utils::one_time_token::hash_one_time_token,
 };
 

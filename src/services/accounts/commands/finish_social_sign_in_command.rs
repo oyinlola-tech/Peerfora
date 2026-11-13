@@ -11,7 +11,9 @@ use crate::{
     errors::app_error::AppError,
     models::account::Account,
     repositories::{account_repository, social_auth_repository},
-    services::accounts::social_oidc_client::{create_openid_client, create_openid_http_client},
+    services::accounts::commands::social_oidc_client::{
+        create_openid_client, create_openid_http_client,
+    },
     utils::one_time_token::{create_one_time_token, hash_one_time_token},
 };
 
