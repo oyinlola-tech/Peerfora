@@ -1,0 +1,13 @@
+{
+  "name": "@peerfora/web-assets",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:css": "sh scripts/build-css.sh",
+    "watch:css": "sh scripts/watch-css.sh"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "4.3.5",
+    "tailwindcss": "4.3.5"
+  }
+}

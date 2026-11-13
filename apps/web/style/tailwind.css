@@ -1,0 +1,14 @@
+@import "tailwindcss";
+@import "../../../packages/design-tokens/tokens.css";
+
+@source "../src";
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background: var(--peerfora-color-background);
+  color: var(--peerfora-color-foreground);
+  font-family: system-ui, sans-serif;
+}

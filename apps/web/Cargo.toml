@@ -1,0 +1,48 @@
+[package]
+name = "peerfora-web"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "peerfora-web"
+path = "src/main.rs"
+required-features = ["ssr"]
+
+[features]
+default = ["ssr"]
+hydrate = ["dep:wasm-bindgen", "leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]
+ssr = [
+    "dep:axum",
+    "dep:leptos_axum",
+    "dep:tokio",
+    "dep:tower-http",
+    "leptos/ssr",
+    "leptos_meta/ssr",
+    "leptos_router/ssr",
+]
+
+[dependencies]
+axum = { version = "0.8", optional = true }
+leptos = { version = "0.8" }
+leptos_axum = { version = "0.8", optional = true }
+leptos_meta = "0.8"
+leptos_router = "0.8"
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"], optional = true }
+tower-http = { version = "0.6", features = ["set-header"], optional = true }
+wasm-bindgen = { version = "0.2", optional = true }
+
+[package.metadata.leptos]
+output-name = "peerfora-web"
+site-root = "target/site"
+site-pkg-dir = "pkg"
+site-addr = "127.0.0.1:3001"
+reload-port = 3002
+browserquery = "defaults"
+bin-default-features = false
+bin-features = ["ssr"]
+lib-default-features = false
+lib-features = ["hydrate"]
