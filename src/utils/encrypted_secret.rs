@@ -47,3 +47,23 @@ fn decode_encryption_key(encoded_key: &str) -> Result<Vec<u8>, AppError> {
     }
     Ok(key)
 }
+
+#[cfg(test)]
+mod tests {
+    use base64::{Engine, engine::general_purpose::STANDARD};
+
+    use super::{decrypt_secret, encrypt_secret};
+
+    #[test]
+    fn encrypted_secret_can_only_be_opened_with_its_key() {
+        let key = STANDARD.encode([11_u8; 32]);
+        let other_key = STANDARD.encode([12_u8; 32]);
+        let ciphertext = encrypt_secret(b"authenticator-secret", &key).expect("encrypt secret");
+
+        assert_eq!(
+            decrypt_secret(&ciphertext, &key).expect("decrypt with correct key"),
+            b"authenticator-secret"
+        );
+        assert!(decrypt_secret(&ciphertext, &other_key).is_err());
+    }
+}

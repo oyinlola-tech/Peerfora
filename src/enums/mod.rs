@@ -1,4 +1,5 @@
 pub mod account_auth_error;
+pub mod admin_auth;
 pub mod admin_auth_error;
 pub mod community;
 pub mod community_error;

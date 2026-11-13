@@ -7,9 +7,10 @@ use axum::{
 
 use crate::{
     dtos::admin_auth::{
+        AdministrativeAuditLogItem, AdministrativeAuditLogQuery, AdministrativeAuditLogResponse,
         AdministratorChallengeRequest, AdministratorChallengeResponse, AdministratorLoginRequest,
         AdministratorMfaEnrollmentResponse, AdministratorMfaVerificationRequest,
-        AdministratorSessionResponse,
+        AdministratorSessionItem, AdministratorSessionResponse, AdministratorSessionsResponse,
     },
     errors::app_error::AppError,
     models::{admin_identity::AdministratorSessionIdentity, app_state::AppState},
@@ -19,11 +20,16 @@ use crate::{
             complete_administrator_mfa_command::{
                 confirm_administrator_mfa_enrollment, verify_administrator_mfa_login,
             },
+            revoke_administrator_session_command::revoke_administrator_session,
             start_administrator_login_command::{
                 challenge_lifetime_seconds, start_administrator_login,
             },
         },
-        queries::find_administrator_session_query::find_administrator_session,
+        queries::{
+            find_administrator_session_query::find_administrator_session,
+            list_administrative_audit_logs_query::list_administrative_audit_logs,
+            list_administrator_sessions_query::list_administrator_sessions,
+        },
     },
 };
 
@@ -128,6 +134,75 @@ pub async fn logout(
         super::auth_cookie::clear_administrator_session_cookie(&state)?,
     );
     Ok((response_headers, axum::http::StatusCode::NO_CONTENT))
+}
+
+pub async fn current_administrator_sessions(
+    State(state): State<AppState>,
+    Extension(identity): Extension<AdministratorSessionIdentity>,
+) -> Result<impl IntoResponse, AppError> {
+    let records = list_administrator_sessions(&state.database, identity.administrator_id).await?;
+    let items = records
+        .into_iter()
+        .map(|record| AdministratorSessionItem {
+            id: record.id,
+            created_at: record.created_at,
+            last_activity_at: record.last_activity_at,
+            expires_at: record.expires_at,
+            revoked_at: record.revoked_at,
+        })
+        .collect();
+    Ok(Json(AdministratorSessionsResponse { items }))
+}
+
+pub async fn revoke_current_administrator_session(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Extension(identity): Extension<AdministratorSessionIdentity>,
+    axum::extract::Path(session_id): axum::extract::Path<uuid::Uuid>,
+) -> Result<impl IntoResponse, AppError> {
+    revoke_administrator_session(
+        &state.database,
+        identity.administrator_id,
+        session_id,
+        correlation_id(&headers),
+    )
+    .await?;
+    Ok(axum::http::StatusCode::NO_CONTENT)
+}
+
+pub async fn list_audit_logs(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Extension(identity): Extension<AdministratorSessionIdentity>,
+    axum::extract::Query(query): axum::extract::Query<AdministrativeAuditLogQuery>,
+) -> Result<impl IntoResponse, AppError> {
+    let (records, limit, offset) = list_administrative_audit_logs(
+        &state.database,
+        identity.administrator_id,
+        correlation_id(&headers),
+        query.limit,
+        query.offset,
+    )
+    .await?;
+    let items = records
+        .into_iter()
+        .map(|record| AdministrativeAuditLogItem {
+            id: record.id,
+            actor_administrator_id: record.actor_administrator_id,
+            action: record.action,
+            target_type: record.target_type,
+            target_id: record.target_id,
+            result: record.result,
+            reason: record.reason,
+            correlation_id: record.correlation_id,
+            created_at: record.created_at,
+        })
+        .collect();
+    Ok(Json(AdministrativeAuditLogResponse {
+        items,
+        limit,
+        offset,
+    }))
 }
 
 async fn create_authenticated_administrator_response(

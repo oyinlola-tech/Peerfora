@@ -5,6 +5,8 @@ pub const ADMIN_AUTH_MFA_VERIFY_ROUTE: &str = "/api/v1/admin/auth/mfa/verify";
 pub const ADMIN_AUTH_ME_ROUTE: &str = "/api/v1/admin/auth/me";
 pub const ADMIN_AUTH_LOGOUT_ROUTE: &str = "/api/v1/admin/auth/logout";
 pub const ADMIN_AUDIT_LOGS_ROUTE: &str = "/api/v1/admin/audit-logs";
+pub const ADMIN_SESSIONS_ROUTE: &str = "/api/v1/admin/sessions";
+pub const ADMIN_SESSION_BY_ID_ROUTE: &str = "/api/v1/admin/sessions/{id}";
 pub const ADMIN_AUDIT_LOGS_READ_PERMISSION: &str = "audit_logs.read";
 
 pub const ADMIN_SESSION_COOKIE_NAME: &str = "peerfora_admin_session";
@@ -12,6 +14,7 @@ pub const ADMIN_SESSION_COOKIE_PATH: &str = "/api/v1/admin";
 pub const ADMIN_SESSION_LIFETIME_HOURS: i64 = 8;
 pub const ADMIN_SESSION_IDLE_TIMEOUT_MINUTES: i64 = 20;
 pub const ADMIN_CHALLENGE_LIFETIME_MINUTES: i64 = 5;
+pub const ADMIN_MFA_FAILED_ATTEMPT_LIMIT: i16 = 5;
 pub const ADMIN_PASSWORD_MINIMUM_LENGTH: usize = 16;
 pub const ADMIN_LOGIN_FAILED_ATTEMPT_LIMIT: i16 = 5;
 pub const ADMIN_LOGIN_LOCK_MINUTES: i64 = 15;

@@ -4,13 +4,15 @@ use uuid::Uuid;
 
 use crate::{
     constants::admin_auth::{
-        ADMIN_LOGIN_FAILED_ATTEMPT_LIMIT, ADMIN_LOGIN_LOCK_MINUTES,
+        ADMIN_CHALLENGE_LIFETIME_MINUTES, ADMIN_LOGIN_FAILED_ATTEMPT_LIMIT,
+        ADMIN_LOGIN_LOCK_MINUTES, ADMIN_MFA_FAILED_ATTEMPT_LIMIT,
         ADMIN_SESSION_IDLE_TIMEOUT_MINUTES, ADMIN_SESSION_LIFETIME_HOURS,
     },
+    enums::admin_auth::AdministratorMfaChallengePurpose,
     errors::app_error::AppError,
     models::admin_identity::{
         AdministrativeAuditLogRecord, AdministratorChallengeRecord, AdministratorLoginRecord,
-        AdministratorSessionIdentity,
+        AdministratorSessionIdentity, AdministratorSessionRecord,
     },
 };
 
@@ -96,7 +98,7 @@ pub async fn find_administrator_for_login(
     sqlx::query_as::<_, AdministratorLoginRecord>(
         "SELECT id, email, password_hash, status = 'active'
             AND (login_locked_until IS NULL OR login_locked_until <= now()) AS is_active,
-            mfa_secret_ciphertext, last_totp_step
+            mfa_secret_ciphertext
         FROM administrators WHERE lower(email) = lower($1)",
     )
     .bind(email)
@@ -109,6 +111,7 @@ pub async fn record_failed_administrator_login(
     pool: &PgPool,
     administrator_id: Uuid,
 ) -> Result<(), AppError> {
+    let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
     sqlx::query(
         "UPDATE administrators
         SET failed_login_attempts = LEAST(failed_login_attempts + 1, $2),
@@ -122,10 +125,23 @@ pub async fn record_failed_administrator_login(
     .bind(administrator_id)
     .bind(ADMIN_LOGIN_FAILED_ATTEMPT_LIMIT)
     .bind(ADMIN_LOGIN_LOCK_MINUTES as f64)
-    .execute(pool)
+    .execute(&mut *transaction)
     .await
     .map_err(|_| AppError::Internal)?;
-    Ok(())
+    insert_administrative_audit_event(
+        &mut transaction,
+        AdministrativeAuditEvent {
+            actor_id: administrator_id,
+            action: "administrator.login_failed",
+            target_type: "administrator",
+            target_id: administrator_id,
+            result: "failure",
+            reason: None,
+            correlation_id: None,
+        },
+    )
+    .await?;
+    transaction.commit().await.map_err(|_| AppError::Internal)
 }
 
 pub async fn reset_administrator_login_failures(
@@ -147,16 +163,17 @@ pub async fn create_administrator_mfa_challenge(
     pool: &PgPool,
     administrator_id: Uuid,
     challenge_hash: &str,
-    purpose: &str,
+    purpose: AdministratorMfaChallengePurpose,
 ) -> Result<(), AppError> {
     sqlx::query(
         "INSERT INTO administrator_mfa_challenges
             (token_hash, administrator_id, purpose, expires_at)
-        VALUES ($1, $2, $3, now() + interval '5 minutes')",
+        VALUES ($1, $2, $3, now() + ($4 * interval '1 minute'))",
     )
     .bind(challenge_hash)
     .bind(administrator_id)
-    .bind(purpose)
+    .bind(purpose.as_database_value())
+    .bind(ADMIN_CHALLENGE_LIFETIME_MINUTES as f64)
     .execute(pool)
     .await
     .map_err(|_| AppError::Internal)?;
@@ -170,8 +187,7 @@ pub async fn find_active_administrator_challenge(
     sqlx::query_as::<_, AdministratorChallengeRecord>(
         "SELECT challenge.administrator_id, administrator.email, challenge.purpose,
             challenge.encrypted_secret,
-            administrator.status = 'active' AS is_active,
-            administrator.last_totp_step
+            administrator.status = 'active' AS is_active
         FROM administrator_mfa_challenges challenge
         JOIN administrators administrator ON administrator.id = challenge.administrator_id
         WHERE challenge.token_hash = $1 AND challenge.consumed_at IS NULL
@@ -209,17 +225,43 @@ pub async fn record_failed_administrator_mfa_attempt(
     pool: &PgPool,
     challenge_hash: &str,
 ) -> Result<(), AppError> {
+    let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
+    let administrator_id = sqlx::query_scalar::<_, Uuid>(
+        "SELECT administrator_id FROM administrator_mfa_challenges
+        WHERE token_hash = $1 AND consumed_at IS NULL FOR UPDATE",
+    )
+    .bind(challenge_hash)
+    .fetch_optional(&mut *transaction)
+    .await
+    .map_err(|_| AppError::Internal)?;
+    let Some(administrator_id) = administrator_id else {
+        return transaction.commit().await.map_err(|_| AppError::Internal);
+    };
     sqlx::query(
         "UPDATE administrator_mfa_challenges
-        SET failed_attempts = LEAST(failed_attempts + 1, 5),
-            consumed_at = CASE WHEN failed_attempts + 1 >= 5 THEN now() ELSE consumed_at END
+        SET failed_attempts = LEAST(failed_attempts + 1, $2),
+            consumed_at = CASE WHEN failed_attempts + 1 >= $2 THEN now() ELSE consumed_at END
         WHERE token_hash = $1 AND consumed_at IS NULL",
     )
     .bind(challenge_hash)
-    .execute(pool)
+    .bind(ADMIN_MFA_FAILED_ATTEMPT_LIMIT)
+    .execute(&mut *transaction)
     .await
     .map_err(|_| AppError::Internal)?;
-    Ok(())
+    insert_administrative_audit_event(
+        &mut transaction,
+        AdministrativeAuditEvent {
+            actor_id: administrator_id,
+            action: "administrator.mfa_verification_failed",
+            target_type: "administrator",
+            target_id: administrator_id,
+            result: "failure",
+            reason: None,
+            correlation_id: None,
+        },
+    )
+    .await?;
+    transaction.commit().await.map_err(|_| AppError::Internal)
 }
 
 pub async fn complete_administrator_mfa_and_create_session(
@@ -251,8 +293,8 @@ pub async fn complete_administrator_mfa_and_create_session(
     if previous_step.is_some_and(|previous| previous >= totp_step as i64) {
         return Err(crate::enums::admin_auth_error::AdminAuthError::InvalidMfaCode.into());
     }
-    match purpose.as_str() {
-        "enrollment" => {
+    match AdministratorMfaChallengePurpose::try_from(purpose.as_str())? {
+        AdministratorMfaChallengePurpose::Enrollment => {
             let secret = enrolled_secret
                 .filter(|secret| challenge_secret.as_deref() == Some(*secret))
                 .ok_or(crate::enums::admin_auth_error::AdminAuthError::InvalidChallenge)?;
@@ -286,7 +328,7 @@ pub async fn complete_administrator_mfa_and_create_session(
             )
             .await?;
         }
-        "login" => {
+        AdministratorMfaChallengePurpose::Login => {
             let updated = sqlx::query(
                 "UPDATE administrators SET last_totp_step = $2, updated_at = now()
                 WHERE id = $1 AND status = 'active' AND mfa_enabled_at IS NOT NULL
@@ -314,7 +356,6 @@ pub async fn complete_administrator_mfa_and_create_session(
             )
             .await?;
         }
-        _ => return Err(crate::enums::admin_auth_error::AdminAuthError::InvalidChallenge.into()),
     }
     sqlx::query(
         "UPDATE administrator_mfa_challenges SET consumed_at = now()
@@ -478,7 +519,7 @@ pub async fn revoke_administrator_session(
     correlation_id: Option<&str>,
 ) -> Result<(), AppError> {
     let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
-    sqlx::query(
+    let revoked = sqlx::query(
         "UPDATE administrator_sessions SET revoked_at = now()
         WHERE id = $1 AND administrator_id = $2 AND revoked_at IS NULL",
     )
@@ -487,6 +528,9 @@ pub async fn revoke_administrator_session(
     .execute(&mut *transaction)
     .await
     .map_err(|_| AppError::Internal)?;
+    if revoked.rows_affected() != 1 {
+        return Err(crate::enums::admin_auth_error::AdminAuthError::SessionNotFound.into());
+    }
     insert_administrative_audit_event(
         &mut transaction,
         AdministrativeAuditEvent {
@@ -501,6 +545,21 @@ pub async fn revoke_administrator_session(
     )
     .await?;
     transaction.commit().await.map_err(|_| AppError::Internal)
+}
+
+pub async fn list_administrator_sessions(
+    pool: &PgPool,
+    administrator_id: Uuid,
+) -> Result<Vec<AdministratorSessionRecord>, AppError> {
+    sqlx::query_as::<_, AdministratorSessionRecord>(
+        "SELECT id, created_at, last_activity_at, expires_at, revoked_at
+        FROM administrator_sessions WHERE administrator_id = $1
+        ORDER BY created_at DESC, id DESC LIMIT 50",
+    )
+    .bind(administrator_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|_| AppError::Internal)
 }
 
 async fn insert_administrative_audit_event(

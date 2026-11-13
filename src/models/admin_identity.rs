@@ -8,7 +8,6 @@ pub struct AdministratorLoginRecord {
     pub password_hash: String,
     pub is_active: bool,
     pub mfa_secret_ciphertext: Option<String>,
-    pub last_totp_step: Option<i64>,
 }
 
 #[derive(FromRow)]
@@ -18,7 +17,6 @@ pub struct AdministratorChallengeRecord {
     pub purpose: String,
     pub encrypted_secret: Option<String>,
     pub is_active: bool,
-    pub last_totp_step: Option<i64>,
 }
 
 #[derive(Clone, Copy)]
@@ -38,4 +36,13 @@ pub struct AdministrativeAuditLogRecord {
     pub reason: Option<String>,
     pub correlation_id: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(sqlx::FromRow)]
+pub struct AdministratorSessionRecord {
+    pub id: Uuid,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub last_activity_at: chrono::DateTime<chrono::Utc>,
+    pub expires_at: chrono::DateTime<chrono::Utc>,
+    pub revoked_at: Option<chrono::DateTime<chrono::Utc>>,
 }

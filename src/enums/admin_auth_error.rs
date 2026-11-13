@@ -10,4 +10,6 @@ pub enum AdminAuthError {
     PasswordTooShort,
     AuthenticationUnavailable,
     PermissionDenied,
+    InvalidPagination,
+    SessionNotFound,
 }

@@ -39,8 +39,15 @@ pub fn get_admin_auth_error_response(error: AdminAuthError) -> (StatusCode, &'st
             StatusCode::SERVICE_UNAVAILABLE,
             "Administrator authentication is unavailable",
         ),
-        AdminAuthError::PermissionDenied => {
-            (StatusCode::FORBIDDEN, "Administrator permission is required")
+        AdminAuthError::PermissionDenied => (
+            StatusCode::FORBIDDEN,
+            "Administrator permission is required",
+        ),
+        AdminAuthError::InvalidPagination => {
+            (StatusCode::BAD_REQUEST, "Audit log pagination is invalid")
+        }
+        AdminAuthError::SessionNotFound => {
+            (StatusCode::NOT_FOUND, "Administrator session was not found")
         }
     }
 }

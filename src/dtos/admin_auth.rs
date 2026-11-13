@@ -44,14 +44,6 @@ pub struct AdministratorSessionResponse {
     pub permissions: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AdministratorLoginStatusResponse {
-    pub administrator_id: Uuid,
-    pub email: String,
-    pub mfa_enabled: bool,
-}
-
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AdministrativeAuditLogQuery {
@@ -79,4 +71,20 @@ pub struct AdministrativeAuditLogItem {
     pub reason: Option<String>,
     pub correlation_id: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdministratorSessionsResponse {
+    pub items: Vec<AdministratorSessionItem>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdministratorSessionItem {
+    pub id: Uuid,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub last_activity_at: chrono::DateTime<chrono::Utc>,
+    pub expires_at: chrono::DateTime<chrono::Utc>,
+    pub revoked_at: Option<chrono::DateTime<chrono::Utc>>,
 }
