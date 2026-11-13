@@ -1,0 +1,38 @@
+name: Web build
+
+on:
+  push:
+    paths:
+      - "apps/web/**"
+      - "packages/design-tokens/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/web.yml"
+  pull_request:
+    paths:
+      - "apps/web/**"
+      - "packages/design-tokens/**"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/web.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.24.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir apps/web run build:css
+      - run: cargo install cargo-leptos --locked
+      - run: cargo leptos build
+        working-directory: apps/web
