@@ -51,3 +51,32 @@ pub struct AdministratorLoginStatusResponse {
     pub email: String,
     pub mfa_enabled: bool,
 }
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdministrativeAuditLogQuery {
+    pub limit: Option<u32>,
+    pub offset: Option<u32>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdministrativeAuditLogResponse {
+    pub items: Vec<AdministrativeAuditLogItem>,
+    pub limit: u32,
+    pub offset: u32,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AdministrativeAuditLogItem {
+    pub id: Uuid,
+    pub actor_administrator_id: Uuid,
+    pub action: String,
+    pub target_type: String,
+    pub target_id: Uuid,
+    pub result: String,
+    pub reason: Option<String>,
+    pub correlation_id: Option<String>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+}

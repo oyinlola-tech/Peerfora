@@ -9,7 +9,8 @@ use crate::{
     },
     errors::app_error::AppError,
     models::admin_identity::{
-        AdministratorChallengeRecord, AdministratorLoginRecord, AdministratorSessionIdentity,
+        AdministrativeAuditLogRecord, AdministratorChallengeRecord, AdministratorLoginRecord,
+        AdministratorSessionIdentity,
     },
 };
 
@@ -389,6 +390,85 @@ pub async fn find_administrator_session_profile(
     .await
     .map_err(|_| AppError::Internal)?
     .ok_or(crate::enums::admin_auth_error::AdminAuthError::InvalidSession.into())
+}
+
+pub async fn administrator_has_permission(
+    pool: &PgPool,
+    administrator_id: Uuid,
+    permission_key: &str,
+) -> Result<bool, AppError> {
+    sqlx::query_scalar(
+        "SELECT EXISTS (
+            SELECT 1 FROM administrator_roles
+            JOIN role_permissions USING (role_key)
+            WHERE administrator_roles.administrator_id = $1
+                AND role_permissions.permission_key = $2
+        )",
+    )
+    .bind(administrator_id)
+    .bind(permission_key)
+    .fetch_one(pool)
+    .await
+    .map_err(|_| AppError::Internal)
+}
+
+pub async fn record_administrator_permission_denial(
+    pool: &PgPool,
+    administrator_id: Uuid,
+    permission_key: &str,
+    correlation_id: Option<&str>,
+) -> Result<(), AppError> {
+    let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
+    insert_administrative_audit_event(
+        &mut transaction,
+        AdministrativeAuditEvent {
+            actor_id: administrator_id,
+            action: "administrator.permission_denied",
+            target_type: "permission",
+            target_id: Uuid::nil(),
+            result: "failure",
+            reason: Some(permission_key),
+            correlation_id,
+        },
+    )
+    .await?;
+    transaction.commit().await.map_err(|_| AppError::Internal)
+}
+
+pub async fn list_administrative_audit_logs(
+    pool: &PgPool,
+    administrator_id: Uuid,
+    correlation_id: Option<&str>,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<AdministrativeAuditLogRecord>, AppError> {
+    let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
+    insert_administrative_audit_event(
+        &mut transaction,
+        AdministrativeAuditEvent {
+            actor_id: administrator_id,
+            action: "administrator.audit_logs_viewed",
+            target_type: "administrative_audit_logs",
+            target_id: Uuid::nil(),
+            result: "success",
+            reason: None,
+            correlation_id,
+        },
+    )
+    .await?;
+    let records = sqlx::query_as::<_, AdministrativeAuditLogRecord>(
+        "SELECT id, actor_administrator_id, action, target_type, target_id,
+            result, reason, correlation_id, created_at
+        FROM administrative_audit_logs
+        ORDER BY created_at DESC, id DESC LIMIT $1 OFFSET $2",
+    )
+    .bind(limit)
+    .bind(offset)
+    .fetch_all(&mut *transaction)
+    .await
+    .map_err(|_| AppError::Internal)?;
+    transaction.commit().await.map_err(|_| AppError::Internal)?;
+    Ok(records)
 }
 
 pub async fn revoke_administrator_session(

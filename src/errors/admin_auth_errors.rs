@@ -39,5 +39,8 @@ pub fn get_admin_auth_error_response(error: AdminAuthError) -> (StatusCode, &'st
             StatusCode::SERVICE_UNAVAILABLE,
             "Administrator authentication is unavailable",
         ),
+        AdminAuthError::PermissionDenied => {
+            (StatusCode::FORBIDDEN, "Administrator permission is required")
+        }
     }
 }

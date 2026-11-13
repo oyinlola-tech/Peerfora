@@ -4,6 +4,8 @@ pub const ADMIN_AUTH_MFA_CONFIRM_ROUTE: &str = "/api/v1/admin/auth/mfa/confirm";
 pub const ADMIN_AUTH_MFA_VERIFY_ROUTE: &str = "/api/v1/admin/auth/mfa/verify";
 pub const ADMIN_AUTH_ME_ROUTE: &str = "/api/v1/admin/auth/me";
 pub const ADMIN_AUTH_LOGOUT_ROUTE: &str = "/api/v1/admin/auth/logout";
+pub const ADMIN_AUDIT_LOGS_ROUTE: &str = "/api/v1/admin/audit-logs";
+pub const ADMIN_AUDIT_LOGS_READ_PERMISSION: &str = "audit_logs.read";
 
 pub const ADMIN_SESSION_COOKIE_NAME: &str = "peerfora_admin_session";
 pub const ADMIN_SESSION_COOKIE_PATH: &str = "/api/v1/admin";

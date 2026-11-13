@@ -9,4 +9,5 @@ pub enum AdminAuthError {
     BootstrapAlreadyCompleted,
     PasswordTooShort,
     AuthenticationUnavailable,
+    PermissionDenied,
 }
