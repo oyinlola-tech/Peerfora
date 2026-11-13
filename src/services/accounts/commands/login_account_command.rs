@@ -8,6 +8,7 @@ use crate::{
     models::account::Account,
     repositories::account_repository,
     utils::{
+        email_address::normalize_email_address,
         one_time_token::{create_one_time_token, hash_one_time_token},
         password::verify_password_hash,
     },
@@ -23,10 +24,9 @@ pub async fn login_account(
     email: &str,
     password: String,
 ) -> Result<AccountSession, AppError> {
-    let account =
-        account_repository::find_account_by_email(pool, &email.trim().to_ascii_lowercase())
-            .await?
-            .ok_or(AccountAuthError::InvalidCredentials)?;
+    let account = account_repository::find_account_by_email(pool, &normalize_email_address(email))
+        .await?
+        .ok_or(AccountAuthError::InvalidCredentials)?;
     let password_hash = account
         .password_hash
         .clone()

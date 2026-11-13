@@ -1,4 +1,4 @@
-use openidconnect::{CoreAuthenticationFlow, CsrfToken, Nonce, PkceCodeChallenge, Scope};
+use openidconnect::{CsrfToken, Nonce, PkceCodeChallenge, Scope, core::CoreAuthenticationFlow};
 use sqlx::PgPool;
 
 use crate::{

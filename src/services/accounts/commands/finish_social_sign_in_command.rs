@@ -1,7 +1,5 @@
 use chrono::{Duration, Utc};
-use openidconnect::{
-    AuthorizationCode, Nonce, OAuth2TokenResponse, PkceCodeVerifier, TokenResponse,
-};
+use openidconnect::{AuthorizationCode, Nonce, PkceCodeVerifier, TokenResponse};
 use sqlx::PgPool;
 
 use crate::{
@@ -14,6 +12,7 @@ use crate::{
     services::accounts::commands::social_oidc_client::{
         create_openid_client, create_openid_http_client,
     },
+    utils::email_address::normalize_email_address,
     utils::one_time_token::{create_one_time_token, hash_one_time_token},
 };
 
@@ -36,6 +35,7 @@ pub async fn finish_social_sign_in(
     let http_client = create_openid_http_client()?;
     let token_response = client
         .exchange_code(AuthorizationCode::new(authorization_code.to_owned()))
+        .map_err(|_| AccountAuthError::SocialStateInvalid)?
         .set_pkce_verifier(PkceCodeVerifier::new(attempt.pkce_verifier))
         .request_async(&http_client)
         .await
@@ -48,8 +48,8 @@ pub async fn finish_social_sign_in(
         .map_err(|_| AccountAuthError::SocialStateInvalid)?;
     let email = claims
         .email()
-        .filter(|_| claims.email_verified() == Some(&true))
-        .map(|email| email.as_str().to_ascii_lowercase())
+        .filter(|_| claims.email_verified() == Some(true))
+        .map(|email| normalize_email_address(email.as_str()))
         .ok_or(AccountAuthError::SocialEmailNotVerified)?;
     let provider_subject = claims.subject().as_str();
 

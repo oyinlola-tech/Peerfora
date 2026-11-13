@@ -8,6 +8,7 @@ use crate::{
     errors::app_error::AppError,
     models::account::Account,
     repositories::social_auth_repository,
+    services::academic_directory::queries::find_active_country_query,
     services::accounts::commands::account_eligibility::require_account_age_eligibility,
     utils::one_time_token::{create_one_time_token, hash_one_time_token},
 };
@@ -27,6 +28,9 @@ pub async fn complete_social_signup(
 ) -> Result<(Account, String), AppError> {
     validate_social_signup(&details)?;
     let country_code = details.country_code.trim().to_ascii_uppercase();
+    if !find_active_country_query::is_country_code_supported(pool, &country_code).await? {
+        return Err(AccountAuthError::CountryCodeUnknown.into());
+    }
     let eligibility_policy =
         require_account_age_eligibility(country_policies, &country_code, details.date_of_birth)?;
     let session_token = create_one_time_token();

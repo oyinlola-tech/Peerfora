@@ -11,8 +11,10 @@ use crate::{
     errors::app_error::AppError,
     models::account::Account,
     repositories::account_repository,
+    services::academic_directory::queries::find_active_country_query,
     services::accounts::commands::account_eligibility::require_account_age_eligibility,
     utils::{
+        email_address::normalize_email_address,
         one_time_token::{create_one_time_token, hash_one_time_token},
         password::create_password_hash,
     },
@@ -34,12 +36,15 @@ pub async fn register_account(
     input: NewAccount,
 ) -> Result<(Account, String), AppError> {
     validate_new_account(&input)?;
+    if !find_active_country_query::is_country_code_supported(pool, &input.country_code).await? {
+        return Err(AccountAuthError::CountryCodeUnknown.into());
+    }
     let policy =
         require_account_age_eligibility(policies, &input.country_code, input.date_of_birth)?;
     let password_hash = create_password_hash(input.password).await?;
     let account = account_repository::create_account(
         pool,
-        &input.email.trim().to_ascii_lowercase(),
+        &normalize_email_address(&input.email),
         &input.username.trim().to_ascii_lowercase(),
         input.display_name.as_deref(),
         Some(&password_hash),
