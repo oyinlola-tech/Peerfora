@@ -1,6 +1,6 @@
 use crate::{
     constants::admin_auth::ADMIN_CHALLENGE_LIFETIME_MINUTES,
-    enums::admin_auth_error::AdminAuthError,
+    enums::{admin_auth::AdministratorMfaChallengePurpose, admin_auth_error::AdminAuthError},
     errors::app_error::AppError,
     repositories::admin_auth_repository,
     utils::{
@@ -38,9 +38,9 @@ pub async fn start_administrator_login(
     }
     admin_auth_repository::reset_administrator_login_failures(pool, administrator.id).await?;
     let (purpose, next_step) = if administrator.mfa_secret_ciphertext.is_some() {
-        ("login", "verify_mfa")
+        (AdministratorMfaChallengePurpose::Login, "verify_mfa")
     } else {
-        ("enrollment", "enroll_mfa")
+        (AdministratorMfaChallengePurpose::Enrollment, "enroll_mfa")
     };
     let challenge_token = create_one_time_token();
     admin_auth_repository::create_administrator_mfa_challenge(

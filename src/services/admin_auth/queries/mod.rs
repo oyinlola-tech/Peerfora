@@ -1,1 +1,3 @@
 pub mod find_administrator_session_query;
+pub mod list_administrative_audit_logs_query;
+pub mod list_administrator_sessions_query;

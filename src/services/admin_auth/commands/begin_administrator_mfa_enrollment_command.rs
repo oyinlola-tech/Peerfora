@@ -1,5 +1,5 @@
 use crate::{
-    enums::admin_auth_error::AdminAuthError,
+    enums::{admin_auth::AdministratorMfaChallengePurpose, admin_auth_error::AdminAuthError},
     errors::app_error::AppError,
     repositories::admin_auth_repository,
     utils::{
@@ -19,7 +19,10 @@ pub async fn begin_administrator_mfa_enrollment(
         admin_auth_repository::find_active_administrator_challenge(pool, &challenge_hash)
             .await?
             .ok_or(AdminAuthError::InvalidChallenge)?;
-    if !challenge.is_active || challenge.purpose != "enrollment" {
+    if !challenge.is_active
+        || AdministratorMfaChallengePurpose::try_from(challenge.purpose.as_str())?
+            != AdministratorMfaChallengePurpose::Enrollment
+    {
         return Err(AdminAuthError::InvalidChallenge.into());
     }
     if let Some(encrypted_secret) = challenge.encrypted_secret {

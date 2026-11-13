@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 use crate::{
-    enums::admin_auth_error::AdminAuthError,
+    enums::{admin_auth::AdministratorMfaChallengePurpose, admin_auth_error::AdminAuthError},
     errors::app_error::AppError,
     repositories::admin_auth_repository,
     utils::{
@@ -28,7 +28,7 @@ pub async fn confirm_administrator_mfa_enrollment(
         challenge_token,
         code,
         encryption_key,
-        "enrollment",
+        AdministratorMfaChallengePurpose::Enrollment,
         correlation_id,
     )
     .await
@@ -46,7 +46,7 @@ pub async fn verify_administrator_mfa_login(
         challenge_token,
         code,
         encryption_key,
-        "login",
+        AdministratorMfaChallengePurpose::Login,
         correlation_id,
     )
     .await
@@ -57,7 +57,7 @@ async fn complete_administrator_mfa(
     challenge_token: &str,
     code: &str,
     encryption_key: Option<&str>,
-    required_purpose: &str,
+    required_purpose: AdministratorMfaChallengePurpose,
     correlation_id: Option<&str>,
 ) -> Result<CompletedAdministratorMfa, AppError> {
     let encryption_key = encryption_key.ok_or(AdminAuthError::MfaEncryptionKeyUnavailable)?;
@@ -66,10 +66,13 @@ async fn complete_administrator_mfa(
         admin_auth_repository::find_active_administrator_challenge(pool, &challenge_hash)
             .await?
             .ok_or(AdminAuthError::InvalidChallenge)?;
-    if !challenge.is_active || challenge.purpose != required_purpose {
+    if !challenge.is_active
+        || AdministratorMfaChallengePurpose::try_from(challenge.purpose.as_str())?
+            != required_purpose
+    {
         return Err(AdminAuthError::InvalidChallenge.into());
     }
-    let encrypted_secret = if required_purpose == "enrollment" {
+    let encrypted_secret = if required_purpose == AdministratorMfaChallengePurpose::Enrollment {
         challenge.encrypted_secret.clone()
     } else {
         let administrator =
@@ -89,7 +92,8 @@ async fn complete_administrator_mfa(
             .await?;
         return Err(AdminAuthError::InvalidMfaCode.into());
     };
-    let enrolled_secret = (required_purpose == "enrollment").then_some(encrypted_secret.as_str());
+    let enrolled_secret = (required_purpose == AdministratorMfaChallengePurpose::Enrollment)
+        .then_some(encrypted_secret.as_str());
     let session_token = create_one_time_token();
     let session_id = Uuid::new_v4();
     admin_auth_repository::complete_administrator_mfa_and_create_session(
