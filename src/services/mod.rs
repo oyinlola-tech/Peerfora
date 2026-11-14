@@ -1,6 +1,8 @@
 pub mod academic_directory;
+pub mod access_control;
 pub mod accounts;
 pub mod admin_auth;
+pub mod administration;
 pub mod communities;
 pub mod discovery;
 pub mod discussions;
