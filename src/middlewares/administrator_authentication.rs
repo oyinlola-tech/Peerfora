@@ -4,15 +4,32 @@ use axum::{
     middleware::Next,
     response::{IntoResponse, Response},
 };
+use sqlx::PgPool;
 
 use crate::{
-    constants::admin_auth::{ADMIN_AUDIT_LOGS_READ_PERMISSION, ADMIN_SESSION_COOKIE_NAME},
+    constants::admin_auth::ADMIN_SESSION_COOKIE_NAME,
     enums::admin_auth_error::AdminAuthError,
     errors::app_error::AppError,
     models::{admin_identity::AdministratorSessionIdentity, app_state::AppState},
     repositories::admin_auth_repository,
     utils::one_time_token::hash_one_time_token,
+    utils::request_context::get_request_correlation_id,
 };
+
+#[derive(Clone)]
+pub struct AdministratorPermissionGuard {
+    pub database: PgPool,
+    pub permission_key: &'static str,
+}
+
+impl AdministratorPermissionGuard {
+    pub fn new(database: PgPool, permission_key: &'static str) -> Self {
+        Self {
+            database,
+            permission_key,
+        }
+    }
+}
 
 pub async fn require_active_administrator_session(
     State(state): State<AppState>,
@@ -38,8 +55,8 @@ pub async fn require_active_administrator_session(
     next.run(request).await
 }
 
-pub async fn require_administrator_audit_permission(
-    State(state): State<AppState>,
+pub async fn require_administrator_permission(
+    State(guard): State<AdministratorPermissionGuard>,
     request: Request,
     next: Next,
 ) -> Response {
@@ -51,19 +68,19 @@ pub async fn require_administrator_audit_permission(
         return AppError::from(AdminAuthError::InvalidSession).into_response();
     };
     match admin_auth_repository::administrator_has_permission(
-        &state.database,
+        &guard.database,
         identity.administrator_id,
-        ADMIN_AUDIT_LOGS_READ_PERMISSION,
+        guard.permission_key,
     )
     .await
     {
         Ok(true) => next.run(request).await,
         Ok(false) => {
             if admin_auth_repository::record_administrator_permission_denial(
-                &state.database,
+                &guard.database,
                 identity.administrator_id,
-                ADMIN_AUDIT_LOGS_READ_PERMISSION,
-                None,
+                guard.permission_key,
+                get_request_correlation_id(request.headers()),
             )
             .await
             .is_err()
