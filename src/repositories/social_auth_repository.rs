@@ -169,8 +169,14 @@ pub async fn finish_social_account_signup(
     .await
     .map_err(map_database_error)?;
 
-    sqlx::query(
-        "INSERT INTO account_sessions (account_id, token_hash, expires_at) VALUES ($1, $2, $3)",
+    let result = sqlx::query(
+        "WITH eligible_account AS (
+            SELECT id FROM accounts
+            WHERE id = $1 AND account_status = 'active'
+            FOR UPDATE
+        )
+        INSERT INTO account_sessions (account_id, token_hash, expires_at)
+        SELECT eligible_account.id, $2, $3 FROM eligible_account",
     )
     .bind(account.id)
     .bind(session_hash)
@@ -178,6 +184,9 @@ pub async fn finish_social_account_signup(
     .execute(&mut *transaction)
     .await
     .map_err(|_| AppError::Internal)?;
+    if result.rows_affected() != 1 {
+        return Err(AccountAuthError::SessionInvalid.into());
+    }
 
     transaction.commit().await.map_err(|_| AppError::Internal)?;
     Ok(account)
@@ -189,8 +198,14 @@ pub async fn create_social_session(
     session_hash: &str,
     session_expires_at: DateTime<Utc>,
 ) -> Result<(), AppError> {
-    sqlx::query(
-        "INSERT INTO account_sessions (account_id, token_hash, expires_at) VALUES ($1, $2, $3)",
+    let result = sqlx::query(
+        "WITH eligible_account AS (
+            SELECT id FROM accounts
+            WHERE id = $1 AND account_status = 'active'
+            FOR UPDATE
+        )
+        INSERT INTO account_sessions (account_id, token_hash, expires_at)
+        SELECT eligible_account.id, $2, $3 FROM eligible_account",
     )
     .bind(account_id)
     .bind(session_hash)
@@ -198,6 +213,9 @@ pub async fn create_social_session(
     .execute(pool)
     .await
     .map_err(|_| AppError::Internal)?;
+    if result.rows_affected() != 1 {
+        return Err(AccountAuthError::SessionInvalid.into());
+    }
     Ok(())
 }
 
