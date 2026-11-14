@@ -1,7 +1,9 @@
 use uuid::Uuid;
 
 use crate::{
-    constants::admin_auth::ADMIN_PASSWORD_MINIMUM_LENGTH,
+    constants::admin_auth::{
+        ADMIN_PASSWORD_MAXIMUM_LENGTH, ADMIN_PASSWORD_MINIMUM_LENGTH, SEEDED_ROOT_ADMINISTRATOR_ID,
+    },
     enums::admin_auth_error::AdminAuthError,
     errors::app_error::AppError,
     repositories::admin_auth_repository,
@@ -15,17 +17,15 @@ pub async fn provision_first_administrator(
     password: String,
 ) -> Result<Uuid, AppError> {
     validate_email_address(email).map_err(|_| AdminAuthError::InvalidBootstrapInput)?;
-    if password.len() < ADMIN_PASSWORD_MINIMUM_LENGTH {
-        return Err(AdminAuthError::PasswordTooShort.into());
+    if !(ADMIN_PASSWORD_MINIMUM_LENGTH..=ADMIN_PASSWORD_MAXIMUM_LENGTH).contains(&password.len()) {
+        return Err(AdminAuthError::InvalidAdministratorPasswordLength.into());
     }
-    let administrator_id = Uuid::new_v4();
     let password_hash = create_password_hash(password).await?;
     admin_auth_repository::bootstrap_first_administrator(
         pool,
-        administrator_id,
         &normalize_email_address(email),
         &password_hash,
     )
     .await?;
-    Ok(administrator_id)
+    Uuid::parse_str(SEEDED_ROOT_ADMINISTRATOR_ID).map_err(|_| AppError::Internal)
 }

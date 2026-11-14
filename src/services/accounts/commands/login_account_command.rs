@@ -10,7 +10,7 @@ use crate::{
     utils::{
         email_address::normalize_email_address,
         one_time_token::{create_one_time_token, hash_one_time_token},
-        password::verify_password_hash,
+        password::{verify_password_against_dummy_hash, verify_password_hash},
     },
 };
 
@@ -24,13 +24,16 @@ pub async fn login_account(
     email: &str,
     password: String,
 ) -> Result<AccountSession, AppError> {
-    let account = account_repository::find_account_by_email(pool, &normalize_email_address(email))
-        .await?
-        .ok_or(AccountAuthError::InvalidCredentials)?;
-    let password_hash = account
-        .password_hash
-        .clone()
-        .ok_or(AccountAuthError::InvalidCredentials)?;
+    let Some(account) =
+        account_repository::find_account_by_email(pool, &normalize_email_address(email)).await?
+    else {
+        verify_password_against_dummy_hash(password).await?;
+        return Err(AccountAuthError::InvalidCredentials.into());
+    };
+    let Some(password_hash) = account.password_hash.clone() else {
+        verify_password_against_dummy_hash(password).await?;
+        return Err(AccountAuthError::InvalidCredentials.into());
+    };
     verify_password_hash(password, password_hash).await?;
     if account.email_verified_at.is_none() {
         return Err(AccountAuthError::EmailMustBeConfirmed.into());

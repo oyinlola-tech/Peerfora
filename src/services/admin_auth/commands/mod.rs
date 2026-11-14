@@ -1,5 +1,11 @@
+pub mod accept_administrator_invitation_command;
 pub mod begin_administrator_mfa_enrollment_command;
+pub mod change_administrator_password_command;
 pub mod complete_administrator_mfa_command;
+pub mod complete_administrator_password_reset_command;
+pub mod issue_administrator_invitation_command;
 pub mod provision_first_administrator_command;
+pub mod regenerate_administrator_recovery_codes_command;
+pub mod request_administrator_password_reset_command;
 pub mod revoke_administrator_session_command;
 pub mod start_administrator_login_command;

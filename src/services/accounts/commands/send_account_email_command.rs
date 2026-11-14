@@ -1,10 +1,12 @@
 use crate::{
     constants::account_auth::{
-        EMAIL_VERIFICATION_MESSAGE, EMAIL_VERIFICATION_SUBJECT, PASSWORD_RESET_MESSAGE,
-        PASSWORD_RESET_PAGE_PATH, PASSWORD_RESET_SUBJECT, VERIFY_EMAIL_ROUTE,
+        ONE_TIME_TOKEN_QUERY_PARAMETER, PASSWORD_RESET_PAGE_PATH, VERIFY_EMAIL_ROUTE,
     },
     enums::account_auth_error::AccountAuthError,
     errors::app_error::AppError,
+    integrations::email::templates::account_access_email_templates::{
+        build_email_verification_message, build_password_reset_message,
+    },
     models::app_state::AppState,
 };
 
@@ -14,17 +16,12 @@ pub async fn send_account_verification_email(
     token: &str,
 ) -> Result<(), AppError> {
     let verification_link = format!(
-        "{}{path}?token={token}",
+        "{}{path}?{ONE_TIME_TOKEN_QUERY_PARAMETER}={token}",
         state.public_url.trim_end_matches('/'),
         path = VERIFY_EMAIL_ROUTE
     );
-    send_email(
-        state,
-        recipient,
-        EMAIL_VERIFICATION_SUBJECT,
-        &format!("{EMAIL_VERIFICATION_MESSAGE}: {verification_link}"),
-    )
-    .await
+    let message = build_email_verification_message(&verification_link);
+    send_email(state, recipient, message.subject, &message.plain_text).await
 }
 
 pub async fn send_password_reset_email(
@@ -33,17 +30,12 @@ pub async fn send_password_reset_email(
     token: &str,
 ) -> Result<(), AppError> {
     let reset_link = format!(
-        "{}{path}?token={token}",
+        "{}{path}?{ONE_TIME_TOKEN_QUERY_PARAMETER}={token}",
         state.public_url.trim_end_matches('/'),
         path = PASSWORD_RESET_PAGE_PATH
     );
-    send_email(
-        state,
-        recipient,
-        PASSWORD_RESET_SUBJECT,
-        &format!("{PASSWORD_RESET_MESSAGE}: {reset_link}"),
-    )
-    .await
+    let message = build_password_reset_message(&reset_link);
+    send_email(state, recipient, message.subject, &message.plain_text).await
 }
 
 async fn send_email(
