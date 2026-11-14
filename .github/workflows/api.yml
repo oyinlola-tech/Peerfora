@@ -5,15 +5,23 @@ on:
     paths:
       - "src/**"
       - "migrations/**"
+      - "tests/**"
+      - "apps/**"
+      - "widgets/**"
       - "Cargo.toml"
       - "Cargo.lock"
+      - "scripts/**"
       - ".github/workflows/api.yml"
   pull_request:
     paths:
       - "src/**"
       - "migrations/**"
+      - "tests/**"
+      - "apps/**"
+      - "widgets/**"
       - "Cargo.toml"
       - "Cargo.lock"
+      - "scripts/**"
       - ".github/workflows/api.yml"
 
 jobs:
@@ -25,5 +33,6 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+      - run: bash scripts/check_source_file_line_limits.sh
       - run: cargo fmt --all -- --check
       - run: cargo check --locked
