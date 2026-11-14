@@ -33,6 +33,27 @@ impl CommunityCategory {
     }
 }
 
+impl TryFrom<&str> for CommunityCategory {
+    type Error = crate::enums::admin_auth_error::AdminAuthError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "academic_subject" => Ok(Self::AcademicSubject),
+            "institution" => Ok(Self::Institution),
+            "institution_course" => Ok(Self::InstitutionCourse),
+            "academic_discipline" => Ok(Self::AcademicDiscipline),
+            "study_group" => Ok(Self::StudyGroup),
+            "scholarship" => Ok(Self::Scholarship),
+            "internship" => Ok(Self::Internship),
+            "career" => Ok(Self::Career),
+            "student_life" => Ok(Self::StudentLife),
+            "general" => Ok(Self::General),
+            "other" => Ok(Self::Other),
+            _ => Err(crate::enums::admin_auth_error::AdminAuthError::InvalidCommunityFilter),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CommunityVisibility {
@@ -65,6 +86,35 @@ impl CommunityMembershipPolicy {
         match self {
             Self::Open => "open",
             Self::ApprovalRequired => "approval_required",
+        }
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CommunityLifecycleStatus {
+    Active,
+    Suspended,
+    Archived,
+}
+
+impl CommunityLifecycleStatus {
+    pub const fn as_database_value(self) -> &'static str {
+        match self {
+            Self::Active => "active",
+            Self::Suspended => "suspended",
+            Self::Archived => "archived",
+        }
+    }
+}
+
+impl TryFrom<&str> for CommunityLifecycleStatus {
+    type Error = crate::enums::admin_auth_error::AdminAuthError;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "active" => Ok(Self::Active),
+            "suspended" => Ok(Self::Suspended),
+            "archived" => Ok(Self::Archived),
+            _ => Err(crate::enums::admin_auth_error::AdminAuthError::InvalidCommunityFilter),
         }
     }
 }

@@ -1,7 +1,12 @@
 pub mod account_auth_error;
+pub mod account_enforcement_reason;
+pub mod account_lifecycle;
 pub mod admin_auth;
 pub mod admin_auth_error;
+pub mod administrator_lifecycle_reason;
+pub mod authentication_rate_limit_operation;
 pub mod community;
+pub mod community_enforcement_reason;
 pub mod community_error;
 pub mod directory_error;
 pub mod profile_error;

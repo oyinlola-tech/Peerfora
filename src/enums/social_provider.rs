@@ -1,3 +1,5 @@
+use crate::constants::social_auth::{APPLE_OIDC_ISSUER, GOOGLE_OIDC_ISSUER};
+
 pub enum SocialProvider {
     Google,
     Apple,
@@ -21,8 +23,8 @@ impl SocialProvider {
 
     pub fn issuer_url(&self) -> &'static str {
         match self {
-            Self::Google => "https://accounts.google.com",
-            Self::Apple => "https://appleid.apple.com",
+            Self::Google => GOOGLE_OIDC_ISSUER,
+            Self::Apple => APPLE_OIDC_ISSUER,
         }
     }
 }
