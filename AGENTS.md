@@ -7,7 +7,7 @@ This file is the working agreement for every change in this repository. Read it 
 - The product name is **Peerfora**.
 - The backend is Rust and starts as one modular monolith. Keep domain ownership explicit so a module can be extracted later without making today's code distributed.
 - The first backend domain is accounts and authentication: email/password, Google/Apple sign-in when configured, email confirmation, password reset, sessions, pseudonymous usernames, and eligibility checks.
-- The PRD launch policy is 18+ and country availability is a product decision. Never invent an enabled country or silently choose its age policy. Configure country rules; reject registration when a rule is absent. If a rule requires an age-assurance method that is not implemented and configured, reject registration.
+- The platform applies a global self-declared minimum age of 18. Country and territory reference data is a directory, not a claim of legal availability or operational support. Per-country policy overrides may raise, but never lower, the platform minimum; reject signup if an override requires an age-assurance method that is not implemented and configured. Keep age eligibility independent of academic level.
 - Social sign-in creates a pending signup. The user must finish the Peerfora birthday/eligibility page before an account or authenticated session is created. A provider's birthday claim never skips this page.
 - Do not expose real name, date of birth, school email, student number, or age-check evidence in public account data. Collect the minimum information needed for the requested flow. Record eligibility policy/version and outcome; do not log birthdays, credentials, tokens, or provider claims.
 
@@ -48,6 +48,7 @@ Populate a folder when a real feature needs its responsibility. Do not add fake 
 - Name files after the action, for example `register_account_command.rs`, `find_account_by_email_query.rs`, and `complete_social_signup_command.rs`.
 - Use idiomatic Rust `snake_case`, but choose complete, self-explanatory function names. Prefer `create_one_time_token` to `new_token` and `find_account_for_session` to `get_me`.
 - Keep files and functions focused. Split unrelated handlers/use cases into separate files. Avoid dense one-line expressions and keep formatting readable.
+- Keep Rust source and test files at 400 lines or fewer, splitting by cohesive responsibility when needed. Keep new migrations under the same limit; do not rewrite an already applied migration solely to shorten it because that changes its SQLx checksum. Generated reference data and dependency lockfiles are data, not source code.
 - Keep source comments out unless a non-obvious rule cannot be expressed clearly in code or a name.
 - Do not add dependencies or abstractions without a concrete use in the current feature.
 
@@ -86,3 +87,11 @@ Populate a folder when a real feature needs its responsibility. Do not add fake 
 - Keep widget previews static until the API has compact, authorized widget contracts. Document every future registered API route in `docs/endpoints.md`.
 - Keep client build prerequisites platform-specific. A build on one host does not establish support for another operating system; record each actual build result separately.
 - Do not add a production brand palette, logo, app icon, cloud provider, or signing key before the required product or infrastructure decision exists.
+
+## Documentation governance
+
+- Maintain `README.md`, `AGENTS.md`, `SECURITY.md`, `docs/architecture.md`, `docs/endpoints.md`, `docs/database.md`, and `docs/status.md` as the primary engineering documents.
+- Keep the master engineering specification, ADRs, original product requirements, licenses, and genuine platform/build instructions. Do not create a separate Markdown file for each feature, audit, phase, or progress update.
+- Before removing redundant documentation, read it, merge unique current information into the relevant primary document, preserve important historical evidence, update links, and check build/CI references.
+- Keep `docs/endpoints.md` authoritative for every registered route. Do not maintain competing manual API catalogs.
+- Keep status, test evidence, known limitations, and next priorities in `docs/status.md`; update it when implementation or verification changes.
