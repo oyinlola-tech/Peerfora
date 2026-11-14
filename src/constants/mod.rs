@@ -1,7 +1,10 @@
 pub mod academic_directory;
 pub mod account_auth;
 pub mod admin_auth;
+pub mod authentication_rate_limits;
 pub mod communities;
 pub mod health;
 pub mod profiles;
+pub mod runtime_settings;
 pub mod security;
+pub mod social_auth;

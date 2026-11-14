@@ -22,6 +22,7 @@ pub const MIN_USERNAME_LENGTH: usize = 3;
 pub const MAX_USERNAME_LENGTH: usize = 24;
 pub const MAX_EMAIL_LENGTH: usize = 254;
 pub const DATE_INPUT_FORMAT: &str = "%Y-%m-%d";
+pub const ONE_TIME_TOKEN_QUERY_PARAMETER: &str = "token";
 
 pub const REGISTER_ACCOUNT_ROUTE: &str = "/api/v1/auth/register";
 pub const LOGIN_ACCOUNT_ROUTE: &str = "/api/v1/auth/login";
@@ -41,8 +42,6 @@ pub const SOCIAL_AUTH_COOKIE_PATH: &str = "/api/v1/auth/social";
 pub const SOCIAL_SIGNUP_COOKIE_PATH: &str = COMPLETE_SOCIAL_SIGNUP_ROUTE;
 pub const EMAIL_VERIFICATION_SUBJECT: &str = "Confirm your Peerfora email";
 pub const PASSWORD_RESET_SUBJECT: &str = "Reset your Peerfora password";
-pub const EMAIL_VERIFICATION_MESSAGE: &str = "Open this link to confirm your email";
-pub const PASSWORD_RESET_MESSAGE: &str = "Open this link to reset your password";
 pub const REGISTRATION_SUBMITTED_MESSAGE: &str = "Check your email to confirm your account";
 pub const EMAIL_CONFIRMED_MESSAGE: &str = "Email confirmed. You can now sign in.";
 pub const PASSWORD_RESET_REQUESTED_MESSAGE: &str =
