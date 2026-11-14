@@ -18,6 +18,9 @@ pub enum AppError {
     DatabaseConfigurationMissing,
     DatabaseUnavailable,
     DatabaseMigrationFailed,
+    AuthenticationRateLimited,
+    RequestOriginDenied,
+    RequestTimedOut,
 }
 
 impl From<AccountAuthError> for AppError {
@@ -94,6 +97,15 @@ impl IntoResponse for AppError {
                 StatusCode::SERVICE_UNAVAILABLE,
                 "Database setup is incomplete",
             ),
+            Self::AuthenticationRateLimited => {
+                crate::errors::authentication_rate_limit_errors::get_authentication_rate_limit_error_response()
+            }
+            Self::RequestOriginDenied => {
+                crate::errors::request_origin_errors::get_request_origin_error_response()
+            }
+            Self::RequestTimedOut => {
+                crate::errors::request_timeout_errors::get_request_timeout_error_response()
+            }
         };
 
         (status, Json(ErrorResponse { message })).into_response()
