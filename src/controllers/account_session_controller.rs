@@ -10,8 +10,10 @@ use crate::{
     controllers::auth_cookie,
     dtos::{auth_requests::LoginAccountRequest, auth_responses::AccountAuthResponse},
     enums::account_auth_error::AccountAuthError,
+    enums::authentication_rate_limit_operation::AuthenticationRateLimitOperation,
     errors::app_error::AppError,
     models::app_state::AppState,
+    services::access_control::commands::enforce_authentication_rate_limit_command::enforce_authentication_rate_limit,
     services::accounts::{
         commands::{end_account_session_command, login_account_command},
         queries::account_session_queries,
@@ -24,6 +26,13 @@ pub async fn login_account(
     Json(request): Json<LoginAccountRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     validate_email_address(&request.email)?;
+    enforce_authentication_rate_limit(
+        &state.database,
+        AuthenticationRateLimitOperation::AccountLogin,
+        &request.email,
+        &state.authentication_rate_limit_hash_key,
+    )
+    .await?;
     let session =
         login_account_command::login_account(&state.database, &request.email, request.password)
             .await?;

@@ -17,8 +17,10 @@ use crate::{
         auth_responses::MessageResponse,
     },
     enums::account_auth_error::AccountAuthError,
+    enums::authentication_rate_limit_operation::AuthenticationRateLimitOperation,
     errors::app_error::AppError,
     models::app_state::AppState,
+    services::access_control::commands::enforce_authentication_rate_limit_command::enforce_authentication_rate_limit,
     services::accounts::commands::{
         request_password_reset_command, reset_account_password_command, send_account_email_command,
         verify_account_email_command,
@@ -50,6 +52,13 @@ pub async fn request_password_reset(
         return Err(AccountAuthError::InvalidEmail.into());
     }
     validate_email_address(&request.email)?;
+    enforce_authentication_rate_limit(
+        &state.database,
+        AuthenticationRateLimitOperation::AccountPasswordReset,
+        &request.email,
+        &state.authentication_rate_limit_hash_key,
+    )
+    .await?;
     if let Some((email, token)) =
         request_password_reset_command::request_password_reset(&state.database, &request.email)
             .await?
