@@ -43,6 +43,21 @@ pub const ADMIN_COMMUNITIES_MANAGE_PERMISSION: &str = "communities.manage";
 pub const ADMIN_COMMUNITIES_DEFAULT_PAGE_SIZE: u32 = 50;
 pub const ADMIN_COMMUNITIES_MAX_PAGE_SIZE: u32 = 100;
 pub const ADMIN_COMMUNITIES_MAX_OFFSET: u32 = 100_000;
+pub const ADMIN_RESEARCH_PROJECTS_ROUTE: &str = "/api/v1/admin/research/projects";
+pub const ADMIN_RESEARCH_PROJECT_BY_ID_ROUTE: &str = "/api/v1/admin/research/projects/{id}";
+pub const ADMIN_RESEARCH_PROJECT_SUSPEND_ROUTE: &str =
+    "/api/v1/admin/research/projects/{id}/suspend";
+pub const ADMIN_RESEARCH_PROJECT_RESTORE_ROUTE: &str =
+    "/api/v1/admin/research/projects/{id}/restore";
+pub const ADMIN_RESEARCH_PROJECTS_READ_PERMISSION: &str = "research.projects.read";
+pub const ADMIN_RESEARCH_PROJECTS_SUSPEND_PERMISSION: &str = "research.projects.suspend";
+pub const ADMIN_RESEARCH_PROJECTS_RESTORE_PERMISSION: &str = "research.projects.restore";
+pub const ADMIN_RESEARCH_PROJECTS_DEFAULT_PAGE_SIZE: u32 = 50;
+pub const ADMIN_RESEARCH_PROJECTS_MAX_PAGE_SIZE: u32 = 100;
+pub const ADMIN_RESEARCH_PROJECTS_MAX_OFFSET: u32 = 100_000;
+pub const ADMIN_RESEARCH_PROJECT_READ_AUDIT_ACTION: &str = "research.project.metadata_read";
+pub const ADMIN_RESEARCH_PROJECT_SUSPENDED_AUDIT_ACTION: &str = "research.project.suspended";
+pub const ADMIN_RESEARCH_PROJECT_RESTORED_AUDIT_ACTION: &str = "research.project.restored";
 pub const ADMIN_ACCOUNTS_DEFAULT_PAGE_SIZE: u32 = 50;
 pub const ADMIN_ACCOUNTS_MAX_PAGE_SIZE: u32 = 100;
 pub const ADMIN_ACCOUNTS_MAX_OFFSET: u32 = 100_000;

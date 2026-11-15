@@ -9,6 +9,33 @@ pub enum ResearchProjectVisibility {
     Public,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, Eq, PartialEq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ResearchProjectStatus {
+    Active,
+    Archived,
+    Suspended,
+}
+
+impl ResearchProjectStatus {
+    pub fn as_database_value(self) -> &'static str {
+        match self {
+            Self::Active => "active",
+            Self::Archived => "archived",
+            Self::Suspended => "suspended",
+        }
+    }
+
+    pub fn from_database_value(value: &str) -> Option<Self> {
+        match value {
+            "active" => Some(Self::Active),
+            "archived" => Some(Self::Archived),
+            "suspended" => Some(Self::Suspended),
+            _ => None,
+        }
+    }
+}
+
 impl ResearchProjectVisibility {
     pub fn as_database_value(self) -> &'static str {
         match self {

@@ -46,4 +46,8 @@ pub enum AdminAuthError {
     AdministratorSelfSessionRevocation,
     LastSuperAdministratorProtected,
     InvalidAdministratorStatus,
+    InvalidResearchProjectFilter,
+    ResearchProjectNotFound,
+    ResearchProjectStateConflict,
+    InvalidResearchEnforcementReason,
 }

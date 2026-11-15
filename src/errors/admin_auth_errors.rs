@@ -176,5 +176,20 @@ pub fn get_admin_auth_error_response(error: AdminAuthError) -> (StatusCode, &'st
             StatusCode::INTERNAL_SERVER_ERROR,
             "An internal error occurred",
         ),
+        AdminAuthError::InvalidResearchProjectFilter => (
+            StatusCode::BAD_REQUEST,
+            "Research project search filters are invalid",
+        ),
+        AdminAuthError::ResearchProjectNotFound => {
+            (StatusCode::NOT_FOUND, "Research project was not found")
+        }
+        AdminAuthError::ResearchProjectStateConflict => (
+            StatusCode::CONFLICT,
+            "Research project is not in a state that allows this action",
+        ),
+        AdminAuthError::InvalidResearchEnforcementReason => (
+            StatusCode::BAD_REQUEST,
+            "Research project enforcement reason is invalid",
+        ),
     }
 }

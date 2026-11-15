@@ -2,6 +2,7 @@ pub mod academic_directory;
 pub mod account;
 pub mod admin_identity;
 pub mod admin_invitation;
+pub mod admin_research;
 pub mod admin_role;
 pub mod agent_identity;
 pub mod app_state;

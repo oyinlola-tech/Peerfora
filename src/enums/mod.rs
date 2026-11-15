@@ -14,4 +14,5 @@ pub mod directory_error;
 pub mod discussion;
 pub mod profile_error;
 pub mod research;
+pub mod research_project_enforcement_reason;
 pub mod social_provider;
