@@ -37,6 +37,7 @@ CREATE TABLE research_findings (
     retracted_at TIMESTAMPTZ,
     UNIQUE (id, project_id),
     CHECK ((finding_status = 'retracted') = (retracted_at IS NOT NULL)),
+    CHECK (finding_status <> 'retracted' OR published_revision_number IS NOT NULL),
     CHECK (finding_status <> 'published' OR published_revision_number IS NOT NULL),
     CHECK (finding_status NOT IN ('draft', 'in_review', 'approved') OR published_revision_number IS NULL)
 );
