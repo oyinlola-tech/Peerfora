@@ -1,4 +1,6 @@
 #!/usr/bin/env sh
 set -eu
-mkdir -p target/site/pkg
-tailwindcss -i style/tailwind.css -o target/site/pkg/peerfora-web.css --watch
+target_app=${1:-.}
+output_name=${2:-peerfora-web}
+mkdir -p "$target_app/target/site/pkg"
+tailwindcss -i style/tailwind.css -o "$target_app/target/site/pkg/$output_name.css" --watch

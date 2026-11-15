@@ -2,6 +2,11 @@
 @import "../../../packages/design-tokens/tokens.css";
 
 @source "../src";
+@source "../../research-web/src";
+@source "../../agents-web/src";
+@source "../../developers-web/src";
+@source "../../institutions-web/src";
+@source "../../knowledge-web/src";
 
 html {
   color-scheme: light dark;

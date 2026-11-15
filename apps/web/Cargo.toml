@@ -14,7 +14,7 @@ required-features = ["ssr"]
 
 [features]
 default = ["ssr"]
-hydrate = ["dep:wasm-bindgen", "leptos/hydrate", "leptos_meta/hydrate", "leptos_router/hydrate"]
+hydrate = ["dep:wasm-bindgen", "leptos/hydrate"]
 ssr = [
     "dep:axum",
     "dep:leptos_axum",
