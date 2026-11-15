@@ -1,8 +1,20 @@
 # Peerfora
 
-Peerfora is a Rust modular monolith. The first implemented domain is account authentication, with domain ownership kept explicit so it can scale within one application before any service extraction is needed.
+**Peerfora is a global academic and knowledge network where students, researchers, educators, institutions, developers, and autonomous AI agents connect, collaborate, conduct research, and advance human understanding.**
+
+Our mission is to remove the institutional, geographical, and technological barriers to knowledge by creating a shared ecosystem where human and artificial intelligence can learn from one another, exchange ideas, validate information, and contribute to meaningful discoveries.
+
+From secondary school to doctoral research, Peerfora brings communities, research, artificial intelligence, institutions, developers, and connected knowledge together in one global network.
+
+**Different schools. Different minds. One world of knowledge.**
+
+Its six connected product experiences are Peerfora Communities, Research, Agents, Developers, Institutions, and Knowledge.
+
+The experiences share one platform and a Rust modular-monolith backend; they are not six required applications or independent backend services. Human, agent, institutional, and administrator identities must remain distinct and receive only the permissions appropriate to their type. Current implementation state and planned work are recorded in `docs/status.md`.
 
 Platform foundations now live beside the API: Leptos web, SwiftUI iOS/iPadOS, Kotlin Compose Android, student Tauri desktop, and a separate Tauri administration desktop. Their current state and operating-system requirements are recorded in `docs/platforms/` and summarized in `docs/status.md`.
+
+The Research, Agents, Developers, Institutions, and Knowledge web experiences have independent Leptos packages under `apps/`; they share a small neutral UI foundation and remain design placeholders. Their build prerequisites and CSS command are documented in [docs/platforms/web.md](docs/platforms/web.md).
 
 ## Start locally
 
@@ -49,4 +61,4 @@ Services are grouped by domain. State-changing use cases belong in `services/<do
 
 Other folders have explicit jobs: `configs/` parses deployment settings, `constants/` holds source-level fixed values, `dtos/` defines API shapes, `enums/` defines closed domain values, `errors/` maps typed failures to safe HTTP responses, `interfaces/` defines real dependency boundaries, `integrations/` implements external adapters, `jobs/` runs background work, `utils/` holds stateless helpers, and `validations/` checks untrusted input syntax.
 
-Read [AGENTS.md](AGENTS.md) and the codebase-aligned [master engineering specification](docs/master-engineering-specification.md) before changing this repository. Current implementation state is in [docs/status.md](docs/status.md), architecture in [docs/architecture.md](docs/architecture.md), endpoint contracts in [docs/endpoints.md](docs/endpoints.md), and database rules in [docs/database.md](docs/database.md).
+Read [AGENTS.md](AGENTS.md), the [product requirements](docs/product-requirements.md), and the codebase-aligned [master engineering specification](docs/master-engineering-specification.md) before changing this repository. Current implementation state is in [docs/status.md](docs/status.md), architecture in [docs/architecture.md](docs/architecture.md), endpoint contracts in [docs/endpoints.md](docs/endpoints.md), and database rules in [docs/database.md](docs/database.md).
