@@ -6,10 +6,10 @@ use axum::{
 
 use crate::{
     constants::admin_auth::{
-        ADMIN_RESEARCH_PROJECTS_READ_PERMISSION, ADMIN_RESEARCH_PROJECTS_RESTORE_PERMISSION,
-        ADMIN_RESEARCH_PROJECTS_ROUTE, ADMIN_RESEARCH_PROJECT_BY_ID_ROUTE,
-        ADMIN_RESEARCH_PROJECT_RESTORE_ROUTE, ADMIN_RESEARCH_PROJECT_RESTORE_PERMISSION,
-        ADMIN_RESEARCH_PROJECT_SUSPEND_ROUTE, ADMIN_RESEARCH_PROJECTS_SUSPEND_PERMISSION,
+        ADMIN_RESEARCH_PROJECT_BY_ID_ROUTE, ADMIN_RESEARCH_PROJECT_RESTORE_ROUTE,
+        ADMIN_RESEARCH_PROJECT_SUSPEND_ROUTE, ADMIN_RESEARCH_PROJECTS_READ_PERMISSION,
+        ADMIN_RESEARCH_PROJECTS_RESTORE_PERMISSION, ADMIN_RESEARCH_PROJECTS_ROUTE,
+        ADMIN_RESEARCH_PROJECTS_SUSPEND_PERMISSION,
     },
     controllers::admin_research_controller,
     middlewares::administrator_authentication::{
@@ -68,6 +68,9 @@ pub fn build_routes(state: AppState) -> Router<AppState> {
             ),
             require_administrator_permission,
         ))
-        .route_layer(from_fn_with_state(state, require_active_administrator_session));
+        .route_layer(from_fn_with_state(
+            state,
+            require_active_administrator_session,
+        ));
     read_routes.merge(suspend_routes).merge(restore_routes)
 }

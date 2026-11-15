@@ -3,7 +3,9 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    constants::admin_auth::{ADMIN_RESEARCH_PROJECTS_DEFAULT_PAGE_SIZE, ADMIN_RESEARCH_PROJECTS_MAX_PAGE_SIZE},
+    constants::admin_auth::{
+        ADMIN_RESEARCH_PROJECTS_DEFAULT_PAGE_SIZE, ADMIN_RESEARCH_PROJECTS_MAX_PAGE_SIZE,
+    },
     models::admin_research::AdministrativeResearchProjectRecord,
 };
 

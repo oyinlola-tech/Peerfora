@@ -1,8 +1,7 @@
 use uuid::Uuid;
 
 use crate::{
-    errors::app_error::AppError,
-    models::admin_research::AdministrativeResearchProjectRecord,
+    errors::app_error::AppError, models::admin_research::AdministrativeResearchProjectRecord,
     repositories::research_administration_repository,
 };
 

@@ -6,10 +6,7 @@ use crate::{
         ADMIN_RESEARCH_PROJECT_READ_AUDIT_ACTION, ADMIN_RESEARCH_PROJECT_RESTORED_AUDIT_ACTION,
         ADMIN_RESEARCH_PROJECT_SUSPENDED_AUDIT_ACTION,
     },
-    enums::{
-        admin_auth_error::AdminAuthError,
-        research::ResearchProjectStatus,
-    },
+    enums::{admin_auth_error::AdminAuthError, research::ResearchProjectStatus},
     errors::app_error::AppError,
     models::admin_research::{
         AdministrativeResearchProjectFilters, AdministrativeResearchProjectRecord,
@@ -72,13 +69,12 @@ pub async fn change_research_project_status(
     correlation_id: Option<&str>,
 ) -> Result<(), AppError> {
     let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
-    let current_status: Option<String> = query_scalar(
-        "SELECT project_status FROM research_projects WHERE id = $1 FOR UPDATE",
-    )
-    .bind(project_id)
-    .fetch_optional(&mut *transaction)
-    .await
-    .map_err(|_| AppError::Internal)?;
+    let current_status: Option<String> =
+        query_scalar("SELECT project_status FROM research_projects WHERE id = $1 FOR UPDATE")
+            .bind(project_id)
+            .fetch_optional(&mut *transaction)
+            .await
+            .map_err(|_| AppError::Internal)?;
     let current_status = current_status.ok_or(AdminAuthError::ResearchProjectNotFound)?;
     if current_status != expected_status.as_database_value() {
         return Err(AdminAuthError::ResearchProjectStateConflict.into());
@@ -126,7 +122,11 @@ async fn count_research_projects(
             AND ($2::text IS NULL OR project.project_status = $2)",
     )
     .bind(filters.search_prefix)
-    .bind(filters.project_status.map(ResearchProjectStatus::as_database_value))
+    .bind(
+        filters
+            .project_status
+            .map(ResearchProjectStatus::as_database_value),
+    )
     .fetch_one(&mut **transaction)
     .await
     .map_err(|_| AppError::Internal)
@@ -160,7 +160,11 @@ async fn find_research_project_page(
         ORDER BY project.updated_at DESC, project.id LIMIT $3 OFFSET $4",
     )
     .bind(filters.search_prefix)
-    .bind(filters.project_status.map(ResearchProjectStatus::as_database_value))
+    .bind(
+        filters
+            .project_status
+            .map(ResearchProjectStatus::as_database_value),
+    )
     .bind(limit)
     .bind(offset)
     .fetch_all(&mut **transaction)

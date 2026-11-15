@@ -6,7 +6,6 @@ use axum::{
 use uuid::Uuid;
 
 use crate::{
-    controllers::admin_community_controller,
     dtos::admin_research::{
         AdministrativeResearchProjectItem, AdministrativeResearchProjectQuery,
         AdministrativeResearchProjectsResponse, ResearchProjectEnforcementRequest,
@@ -20,9 +19,7 @@ use crate::{
                 ResearchProjectAdministrationFilters, search_research_projects_for_administration,
             },
         },
-        research::commands::{
-            restore_research_project_command, suspend_research_project_command,
-        },
+        research::commands::{restore_research_project_command, suspend_research_project_command},
     },
     utils::request_context::get_request_correlation_id,
 };
@@ -39,14 +36,13 @@ pub async fn list_research_projects(
         limit: query.limit,
         offset: query.offset,
     };
-    let (records, limit, offset, total_count) =
-        search_research_projects_for_administration(
-            &state.database,
-            identity.administrator_id,
-            filters,
-            get_request_correlation_id(&headers),
-        )
-        .await?;
+    let (records, limit, offset, total_count) = search_research_projects_for_administration(
+        &state.database,
+        identity.administrator_id,
+        filters,
+        get_request_correlation_id(&headers),
+    )
+    .await?;
     let items = records
         .into_iter()
         .map(AdministrativeResearchProjectItem::from)
@@ -65,13 +61,14 @@ pub async fn show_research_project(
     Path(project_id): Path<Uuid>,
     headers: HeaderMap,
 ) -> Result<Json<AdministrativeResearchProjectItem>, AppError> {
-    let record = find_research_project_for_administration_query::find_research_project_for_administration(
-        &state.database,
-        project_id,
-        identity.administrator_id,
-        get_request_correlation_id(&headers),
-    )
-    .await?;
+    let record =
+        find_research_project_for_administration_query::find_research_project_for_administration(
+            &state.database,
+            project_id,
+            identity.administrator_id,
+            get_request_correlation_id(&headers),
+        )
+        .await?;
     Ok(Json(AdministrativeResearchProjectItem::from(record)))
 }
 
