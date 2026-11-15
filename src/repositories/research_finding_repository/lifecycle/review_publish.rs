@@ -21,7 +21,7 @@ pub async fn submit_research_finding_for_review(
     let actor_id = access::find_active_human_actor(&mut transaction, account_id).await?;
     let finding = access::lock_research_finding(&mut transaction, finding_id).await?;
     access::require_active_project(&mut transaction, finding.project_id).await?;
-    access::require_project_writer(&mut *transaction, finding.project_id, actor_id).await?;
+    access::require_project_writer(&mut transaction, finding.project_id, actor_id).await?;
     let revision_status: Option<String> = query_scalar(
         "SELECT review_status FROM research_finding_revisions
         WHERE finding_id = $1 AND revision_number = $2 FOR UPDATE",
@@ -83,7 +83,7 @@ pub async fn review_research_finding(
     let reviewer_actor_id = access::find_active_human_actor(&mut transaction, account_id).await?;
     let finding = access::lock_research_finding(&mut transaction, finding_id).await?;
     access::require_active_project(&mut transaction, finding.project_id).await?;
-    access::require_project_reviewer(&mut *transaction, finding.project_id, reviewer_actor_id)
+    access::require_project_reviewer(&mut transaction, finding.project_id, reviewer_actor_id)
         .await?;
     let author_actor_id: Option<Uuid> = query_scalar(
         "SELECT authored_by_actor_id FROM research_finding_revisions
@@ -149,7 +149,7 @@ pub async fn publish_research_finding(
     let finding = access::lock_research_finding(&mut transaction, finding_id).await?;
     access::require_active_project(&mut transaction, finding.project_id).await?;
     let role =
-        access::require_project_member(&mut *transaction, finding.project_id, publisher_actor_id)
+        access::require_project_member(&mut transaction, finding.project_id, publisher_actor_id)
             .await?;
     if !matches!(role.as_str(), "owner" | "supervisor") {
         return Err(ResearchFindingError::PermissionDenied.into());
@@ -226,7 +226,7 @@ pub async fn retract_research_finding(
     let finding = access::lock_research_finding(&mut transaction, finding_id).await?;
     access::require_active_project(&mut transaction, finding.project_id).await?;
     let role =
-        access::require_project_member(&mut *transaction, finding.project_id, actor_id).await?;
+        access::require_project_member(&mut transaction, finding.project_id, actor_id).await?;
     let may_retract =
         finding.created_by_actor_id == actor_id || matches!(role.as_str(), "owner" | "supervisor");
     if !may_retract {

@@ -72,7 +72,7 @@ pub async fn list_research_findings(
     let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
     let actor_id = super::access::find_active_human_actor(&mut transaction, account_id).await?;
     super::access::require_active_project(&mut transaction, project_id).await?;
-    super::access::require_project_member(&mut *transaction, project_id, actor_id).await?;
+    super::access::require_project_member(&mut transaction, project_id, actor_id).await?;
     let query = format!(
         "{FINDING_FIELDS}
         WHERE finding.project_id = $1 AND member.actor_id IS NOT NULL

@@ -20,7 +20,7 @@ pub async fn create_research_finding(
     let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
     let author_actor_id = access::find_active_human_actor(&mut transaction, account_id).await?;
     access::require_active_project(&mut transaction, project_id).await?;
-    access::require_project_writer(&mut *transaction, project_id, author_actor_id).await?;
+    access::require_project_writer(&mut transaction, project_id, author_actor_id).await?;
     ensure_citations_belong_to_project(&mut transaction, project_id, &details).await?;
 
     sqlx::query(
@@ -57,7 +57,7 @@ pub async fn update_research_finding(
     let author_actor_id = access::find_active_human_actor(&mut transaction, account_id).await?;
     let finding = access::lock_research_finding(&mut transaction, finding_id).await?;
     access::require_active_project(&mut transaction, finding.project_id).await?;
-    access::require_project_writer(&mut *transaction, finding.project_id, author_actor_id).await?;
+    access::require_project_writer(&mut transaction, finding.project_id, author_actor_id).await?;
     if !matches!(
         ResearchFindingStatus::from_database_value(&finding.finding_status),
         Some(

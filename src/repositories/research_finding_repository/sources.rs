@@ -57,7 +57,7 @@ pub async fn list_research_sources(
     let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
     let actor_id = access::find_active_human_actor(&mut transaction, account_id).await?;
     access::require_active_project(&mut transaction, project_id).await?;
-    access::require_project_member(&mut *transaction, project_id, actor_id).await?;
+    access::require_project_member(&mut transaction, project_id, actor_id).await?;
     let sources = query_as::<_, ResearchSource>(
         "SELECT source.id, source.project_id, source.source_type, source.title,
             source.doi, source.source_url, source.authors, source.publication_year,
