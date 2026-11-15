@@ -12,7 +12,11 @@ pub fn register_routes(app: Router<AppState>, state: AppState) -> Router<AppStat
         .merge(routes::admin_community_routes::build_routes(state.clone()))
         .merge(routes::admin_role_routes::build_routes(state))
         .merge(routes::account_auth_routes::build_routes())
+        .merge(routes::agent_routes::build_routes())
         .merge(routes::academic_directory_routes::build_routes())
+        .merge(routes::institution_directory_routes::build_routes())
         .merge(routes::community_routes::build_routes())
+        .merge(routes::discussion_routes::build_routes())
         .merge(routes::profile_routes::build_routes())
+        .merge(routes::research_routes::build_routes())
 }
