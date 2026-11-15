@@ -2,7 +2,8 @@ use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
 
 use crate::{
-    enums::research::ResearchFindingError, errors::app_error::AppError,
+    enums::research::{ResearchFindingError, ResearchFindingRevisionStatus},
+    errors::app_error::AppError,
     validations::research_finding_validation::ValidatedResearchFinding,
 };
 
@@ -44,7 +45,7 @@ pub async fn insert_finding_revision(
         "INSERT INTO research_finding_revisions (
             finding_id, project_id, revision_number, title, statement, details,
             authored_by_actor_id, review_status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'draft')",
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
     )
     .bind(finding_id)
     .bind(project_id)
@@ -53,6 +54,7 @@ pub async fn insert_finding_revision(
     .bind(&details.statement)
     .bind(&details.details)
     .bind(author_actor_id)
+    .bind(ResearchFindingRevisionStatus::Draft.as_database_value())
     .execute(&mut **transaction)
     .await
     .map_err(|_| AppError::Internal)?;

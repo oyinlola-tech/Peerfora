@@ -3,7 +3,10 @@ use uuid::Uuid;
 
 use crate::{
     constants::research::MAX_RESEARCH_FINDING_REVIEW_NOTES_LENGTH,
-    enums::research::{ResearchFindingError, ResearchFindingReviewDecision},
+    enums::research::{
+        ResearchFindingError, ResearchFindingReviewDecision, ResearchFindingRevisionStatus,
+        ResearchFindingStatus,
+    },
     errors::app_error::AppError,
 };
 
@@ -29,22 +32,31 @@ pub async fn submit_research_finding_for_review(
     .await
     .map_err(|_| AppError::Internal)?;
     if !matches!(
-        (finding.finding_status.as_str(), revision_status.as_deref()),
-        ("draft" | "correction_draft", Some("draft"))
+        (
+            ResearchFindingStatus::from_database_value(&finding.finding_status),
+            revision_status
+                .as_deref()
+                .and_then(ResearchFindingRevisionStatus::from_database_value)
+        ),
+        (
+            Some(ResearchFindingStatus::Draft | ResearchFindingStatus::CorrectionDraft),
+            Some(ResearchFindingRevisionStatus::Draft)
+        )
     ) {
         return Err(ResearchFindingError::InvalidTransition.into());
     }
     let status = if finding.published_revision_number.is_some() {
-        "correction_in_review"
+        ResearchFindingStatus::CorrectionInReview
     } else {
-        "in_review"
+        ResearchFindingStatus::InReview
     };
     sqlx::query(
-        "UPDATE research_finding_revisions SET review_status = 'in_review'
+        "UPDATE research_finding_revisions SET review_status = $3
         WHERE finding_id = $1 AND revision_number = $2",
     )
     .bind(finding_id)
     .bind(finding.latest_revision_number)
+    .bind(ResearchFindingRevisionStatus::InReview.as_database_value())
     .execute(&mut *transaction)
     .await
     .map_err(|_| AppError::Internal)?;
@@ -53,7 +65,7 @@ pub async fn submit_research_finding_for_review(
         WHERE id = $1",
     )
     .bind(finding_id)
-    .bind(status)
+    .bind(status.as_database_value())
     .execute(&mut *transaction)
     .await
     .map_err(|_| AppError::Internal)?;
@@ -75,11 +87,12 @@ pub async fn review_research_finding(
         .await?;
     let author_actor_id: Option<Uuid> = query_scalar(
         "SELECT authored_by_actor_id FROM research_finding_revisions
-        WHERE finding_id = $1 AND revision_number = $2 AND review_status = 'in_review'
+        WHERE finding_id = $1 AND revision_number = $2 AND review_status = $3
         FOR UPDATE",
     )
     .bind(finding_id)
     .bind(finding.latest_revision_number)
+    .bind(ResearchFindingRevisionStatus::InReview.as_database_value())
     .fetch_optional(&mut *transaction)
     .await
     .map_err(|_| AppError::Internal)?;
@@ -109,17 +122,17 @@ pub async fn review_research_finding(
     .map_err(|_| AppError::Internal)?;
 
     let status = match (decision, finding.published_revision_number.is_some()) {
-        (ResearchFindingReviewDecision::Approve, false) => "approved",
-        (ResearchFindingReviewDecision::Approve, true) => "correction_approved",
-        (ResearchFindingReviewDecision::Reject, false) => "draft",
-        (ResearchFindingReviewDecision::Reject, true) => "correction_draft",
+        (ResearchFindingReviewDecision::Approve, false) => ResearchFindingStatus::Approved,
+        (ResearchFindingReviewDecision::Approve, true) => ResearchFindingStatus::CorrectionApproved,
+        (ResearchFindingReviewDecision::Reject, false) => ResearchFindingStatus::Draft,
+        (ResearchFindingReviewDecision::Reject, true) => ResearchFindingStatus::CorrectionDraft,
     };
     sqlx::query(
         "UPDATE research_findings SET finding_status = $2, updated_at = now()
         WHERE id = $1",
     )
     .bind(finding_id)
-    .bind(status)
+    .bind(status.as_database_value())
     .execute(&mut *transaction)
     .await
     .map_err(|_| AppError::Internal)?;
@@ -154,28 +167,30 @@ pub async fn publish_research_finding(
     .map_err(|_| AppError::Internal)?;
     if !approved
         || !matches!(
-            finding.finding_status.as_str(),
-            "approved" | "correction_approved"
+            ResearchFindingStatus::from_database_value(&finding.finding_status),
+            Some(ResearchFindingStatus::Approved | ResearchFindingStatus::CorrectionApproved)
         )
     {
         return Err(ResearchFindingError::InvalidTransition.into());
     }
     supersede_published_revision(&mut transaction, &finding).await?;
     sqlx::query(
-        "UPDATE research_finding_revisions SET review_status = 'published'
+        "UPDATE research_finding_revisions SET review_status = $3
         WHERE finding_id = $1 AND revision_number = $2",
     )
     .bind(finding_id)
     .bind(finding.latest_revision_number)
+    .bind(ResearchFindingRevisionStatus::Published.as_database_value())
     .execute(&mut *transaction)
     .await
     .map_err(|_| AppError::Internal)?;
     sqlx::query(
-        "UPDATE research_findings SET finding_status = 'published',
+        "UPDATE research_findings SET finding_status = $2,
             published_revision_number = latest_revision_number, updated_at = now()
         WHERE id = $1",
     )
     .bind(finding_id)
+    .bind(ResearchFindingStatus::Published.as_database_value())
     .execute(&mut *transaction)
     .await
     .map_err(|_| AppError::Internal)?;
@@ -188,11 +203,12 @@ async fn supersede_published_revision(
 ) -> Result<(), AppError> {
     if let Some(revision_number) = finding.published_revision_number {
         sqlx::query(
-            "UPDATE research_finding_revisions SET review_status = 'superseded'
+            "UPDATE research_finding_revisions SET review_status = $3
             WHERE finding_id = $1 AND revision_number = $2",
         )
         .bind(finding.id)
         .bind(revision_number)
+        .bind(ResearchFindingRevisionStatus::Superseded.as_database_value())
         .execute(&mut **transaction)
         .await
         .map_err(|_| AppError::Internal)?;
@@ -218,17 +234,23 @@ pub async fn retract_research_finding(
     }
     if finding.published_revision_number.is_none()
         || matches!(
-            finding.finding_status.as_str(),
-            "retracted" | "draft" | "in_review" | "approved"
+            ResearchFindingStatus::from_database_value(&finding.finding_status),
+            Some(
+                ResearchFindingStatus::Retracted
+                    | ResearchFindingStatus::Draft
+                    | ResearchFindingStatus::InReview
+                    | ResearchFindingStatus::Approved
+            )
         )
     {
         return Err(ResearchFindingError::InvalidTransition.into());
     }
     sqlx::query(
-        "UPDATE research_findings SET finding_status = 'retracted',
+        "UPDATE research_findings SET finding_status = $2,
             retracted_at = now(), updated_at = now() WHERE id = $1",
     )
     .bind(finding_id)
+    .bind(ResearchFindingStatus::Retracted.as_database_value())
     .execute(&mut *transaction)
     .await
     .map_err(|_| AppError::Internal)?;

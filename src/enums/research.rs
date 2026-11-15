@@ -166,6 +166,82 @@ pub enum ResearchFindingReviewDecision {
     Reject,
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ResearchFindingStatus {
+    Draft,
+    InReview,
+    Approved,
+    Published,
+    CorrectionDraft,
+    CorrectionInReview,
+    CorrectionApproved,
+    Retracted,
+}
+
+impl ResearchFindingStatus {
+    pub fn as_database_value(self) -> &'static str {
+        match self {
+            Self::Draft => "draft",
+            Self::InReview => "in_review",
+            Self::Approved => "approved",
+            Self::Published => "published",
+            Self::CorrectionDraft => "correction_draft",
+            Self::CorrectionInReview => "correction_in_review",
+            Self::CorrectionApproved => "correction_approved",
+            Self::Retracted => "retracted",
+        }
+    }
+
+    pub fn from_database_value(value: &str) -> Option<Self> {
+        match value {
+            "draft" => Some(Self::Draft),
+            "in_review" => Some(Self::InReview),
+            "approved" => Some(Self::Approved),
+            "published" => Some(Self::Published),
+            "correction_draft" => Some(Self::CorrectionDraft),
+            "correction_in_review" => Some(Self::CorrectionInReview),
+            "correction_approved" => Some(Self::CorrectionApproved),
+            "retracted" => Some(Self::Retracted),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ResearchFindingRevisionStatus {
+    Draft,
+    InReview,
+    Approved,
+    Rejected,
+    Published,
+    Superseded,
+}
+
+impl ResearchFindingRevisionStatus {
+    pub fn as_database_value(self) -> &'static str {
+        match self {
+            Self::Draft => "draft",
+            Self::InReview => "in_review",
+            Self::Approved => "approved",
+            Self::Rejected => "rejected",
+            Self::Published => "published",
+            Self::Superseded => "superseded",
+        }
+    }
+
+    pub fn from_database_value(value: &str) -> Option<Self> {
+        match value {
+            "draft" => Some(Self::Draft),
+            "in_review" => Some(Self::InReview),
+            "approved" => Some(Self::Approved),
+            "rejected" => Some(Self::Rejected),
+            "published" => Some(Self::Published),
+            "superseded" => Some(Self::Superseded),
+            _ => None,
+        }
+    }
+}
+
 impl ResearchFindingReviewDecision {
     pub fn as_database_value(self) -> &'static str {
         match self {
