@@ -10,6 +10,7 @@ pub fn register_routes(app: Router<AppState>, state: AppState) -> Router<AppStat
             state.clone(),
         ))
         .merge(routes::admin_community_routes::build_routes(state.clone()))
+        .merge(routes::admin_research_routes::build_routes(state.clone()))
         .merge(routes::admin_role_routes::build_routes(state))
         .merge(routes::account_auth_routes::build_routes())
         .merge(routes::agent_routes::build_routes())

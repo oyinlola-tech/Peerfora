@@ -5,6 +5,7 @@ pub mod admin_administrator_routes;
 pub mod admin_auth_routes;
 pub mod admin_community_routes;
 pub mod admin_role_routes;
+pub mod admin_research_routes;
 pub mod agent_routes;
 pub mod community_routes;
 pub mod discussion_routes;

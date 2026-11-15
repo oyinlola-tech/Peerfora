@@ -9,6 +9,7 @@ pub mod admin_auth_recovery_controller;
 pub mod admin_community_controller;
 pub mod admin_invitation_controller;
 pub mod admin_role_controller;
+pub mod admin_research_controller;
 pub mod agent_identity_controller;
 pub mod auth_cookie;
 pub mod community_controller;
