@@ -19,6 +19,10 @@ web:
 web-css:
     cd apps/web && pnpm run build:css
 
+ecosystem-web app:
+    cd apps/web && pnpm run build:css -- ../{{app}} application
+    cd apps/{{app}} && cargo leptos watch
+
 admin:
     cd apps/admin-desktop/src-tauri && cargo tauri dev
 
