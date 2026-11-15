@@ -69,19 +69,25 @@ pub async fn list_research_findings(
     account_id: Uuid,
     limit: i64,
 ) -> Result<Vec<ResearchFinding>, AppError> {
+    let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
+    let actor_id = super::access::find_active_human_actor(&mut transaction, account_id).await?;
+    super::access::require_active_project(&mut transaction, project_id).await?;
+    super::access::require_project_member(&mut *transaction, project_id, actor_id).await?;
     let query = format!(
         "{FINDING_FIELDS}
         WHERE finding.project_id = $1 AND member.actor_id IS NOT NULL
             AND finding.finding_status <> 'retracted'
         ORDER BY finding.updated_at DESC, finding.id LIMIT $3"
     );
-    query_as::<_, ResearchFinding>(&query)
+    let findings = query_as::<_, ResearchFinding>(&query)
         .bind(project_id)
         .bind(Some(account_id))
         .bind(limit)
-        .fetch_all(pool)
+        .fetch_all(&mut *transaction)
         .await
-        .map_err(|_| AppError::Internal)
+        .map_err(|_| AppError::Internal)?;
+    transaction.commit().await.map_err(|_| AppError::Internal)?;
+    Ok(findings)
 }
 
 pub async fn list_research_finding_revisions(
@@ -89,7 +95,7 @@ pub async fn list_research_finding_revisions(
     finding_id: Uuid,
     account_id: Uuid,
 ) -> Result<Vec<ResearchFindingRevision>, AppError> {
-    query_as::<_, ResearchFindingRevision>(
+    let revisions = query_as::<_, ResearchFindingRevision>(
         "SELECT revision.finding_id, revision.project_id, revision.revision_number,
             revision.title, revision.statement, revision.details,
             author.username AS authored_by_username, revision.review_status,
@@ -128,5 +134,9 @@ pub async fn list_research_finding_revisions(
     .bind(account_id)
     .fetch_all(pool)
     .await
-    .map_err(|_| AppError::Internal)
+    .map_err(|_| AppError::Internal)?;
+    if revisions.is_empty() {
+        return Err(ResearchFindingError::FindingNotFound.into());
+    }
+    Ok(revisions)
 }
