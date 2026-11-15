@@ -13,10 +13,10 @@ pub async fn connect_database(database_url: &str) -> Result<PgPool, AppError> {
         .connect(database_url)
         .await
         .map_err(|_| AppError::DatabaseUnavailable)?;
-    sqlx::migrate!("./migrations")
-        .run(&pool)
-        .await
-        .map_err(|_| AppError::DatabaseMigrationFailed)?;
+    if let Err(error) = sqlx::migrate!("./migrations").run(&pool).await {
+        tracing::error!(error = %error, "Database migrations failed");
+        return Err(AppError::DatabaseMigrationFailed);
+    }
     reference_data::install_country_snapshot(&pool).await?;
     Ok(pool)
 }

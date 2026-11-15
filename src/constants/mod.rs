@@ -1,10 +1,14 @@
 pub mod academic_directory;
 pub mod account_auth;
 pub mod admin_auth;
+pub mod agents;
 pub mod authentication_rate_limits;
 pub mod communities;
+pub mod discussions;
 pub mod health;
+pub mod institutions;
 pub mod profiles;
+pub mod research;
 pub mod runtime_settings;
 pub mod security;
 pub mod social_auth;

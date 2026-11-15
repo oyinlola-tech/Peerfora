@@ -13,8 +13,13 @@ pub enum AppError {
     AdminAuth(crate::enums::admin_auth_error::AdminAuthError),
     AccountAuth(AccountAuthError),
     Community(CommunityError),
+    Agent(crate::enums::agent_error::AgentError),
     Directory(DirectoryError),
     Profile(crate::enums::profile_error::ProfileError),
+    Research(crate::enums::research::ResearchProjectError),
+    ResearchTask(crate::enums::research::ResearchTaskError),
+    ResearchFinding(crate::enums::research::ResearchFindingError),
+    Discussion(crate::enums::discussion::DiscussionError),
     DatabaseConfigurationMissing,
     DatabaseUnavailable,
     DatabaseMigrationFailed,
@@ -41,6 +46,12 @@ impl From<CommunityError> for AppError {
     }
 }
 
+impl From<crate::enums::agent_error::AgentError> for AppError {
+    fn from(error: crate::enums::agent_error::AgentError) -> Self {
+        Self::Agent(error)
+    }
+}
+
 impl From<DirectoryError> for AppError {
     fn from(error: DirectoryError) -> Self {
         Self::Directory(error)
@@ -50,6 +61,30 @@ impl From<DirectoryError> for AppError {
 impl From<crate::enums::profile_error::ProfileError> for AppError {
     fn from(error: crate::enums::profile_error::ProfileError) -> Self {
         Self::Profile(error)
+    }
+}
+
+impl From<crate::enums::research::ResearchProjectError> for AppError {
+    fn from(error: crate::enums::research::ResearchProjectError) -> Self {
+        Self::Research(error)
+    }
+}
+
+impl From<crate::enums::research::ResearchTaskError> for AppError {
+    fn from(error: crate::enums::research::ResearchTaskError) -> Self {
+        Self::ResearchTask(error)
+    }
+}
+
+impl From<crate::enums::research::ResearchFindingError> for AppError {
+    fn from(error: crate::enums::research::ResearchFindingError) -> Self {
+        Self::ResearchFinding(error)
+    }
+}
+
+impl From<crate::enums::discussion::DiscussionError> for AppError {
+    fn from(error: crate::enums::discussion::DiscussionError) -> Self {
+        Self::Discussion(error)
     }
 }
 
@@ -80,11 +115,24 @@ impl IntoResponse for AppError {
             Self::Community(error) => {
                 crate::errors::community_errors::get_community_error_response(error)
             }
+            Self::Agent(error) => crate::errors::agent_errors::get_agent_error_response(error),
             Self::Directory(error) => {
                 crate::errors::directory_errors::get_directory_error_response(error)
             }
             Self::Profile(error) => {
                 crate::errors::profile_errors::get_profile_error_response(error)
+            }
+            Self::Research(error) => {
+                crate::errors::research_errors::get_research_project_error_response(error)
+            }
+            Self::ResearchTask(error) => {
+                crate::errors::research_errors::get_research_task_error_response(error)
+            }
+            Self::ResearchFinding(error) => {
+                crate::errors::research_finding_errors::get_research_finding_error_response(error)
+            }
+            Self::Discussion(error) => {
+                crate::errors::discussion_errors::get_discussion_error_response(error)
             }
             Self::DatabaseConfigurationMissing => (
                 StatusCode::SERVICE_UNAVAILABLE,

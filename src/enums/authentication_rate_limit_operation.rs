@@ -4,6 +4,7 @@ use crate::constants::authentication_rate_limits::{
     ACCOUNT_REGISTRATION_MAXIMUM_REQUESTS, ACCOUNT_REGISTRATION_WINDOW_SECONDS,
     ADMINISTRATOR_LOGIN_MAXIMUM_REQUESTS, ADMINISTRATOR_LOGIN_WINDOW_SECONDS,
     ADMINISTRATOR_PASSWORD_RESET_MAXIMUM_REQUESTS, ADMINISTRATOR_PASSWORD_RESET_WINDOW_SECONDS,
+    AGENT_REGISTRATION_MAXIMUM_REQUESTS, AGENT_REGISTRATION_WINDOW_SECONDS,
 };
 
 #[derive(Clone, Copy)]
@@ -13,6 +14,7 @@ pub enum AuthenticationRateLimitOperation {
     AccountPasswordReset,
     AdministratorLogin,
     AdministratorPasswordReset,
+    AgentRegistration,
 }
 
 impl AuthenticationRateLimitOperation {
@@ -23,6 +25,7 @@ impl AuthenticationRateLimitOperation {
             Self::AccountPasswordReset => "account_password_reset",
             Self::AdministratorLogin => "administrator_login",
             Self::AdministratorPasswordReset => "administrator_password_reset",
+            Self::AgentRegistration => "agent_registration",
         }
     }
 
@@ -33,6 +36,7 @@ impl AuthenticationRateLimitOperation {
             Self::AccountPasswordReset => ACCOUNT_PASSWORD_RESET_MAXIMUM_REQUESTS,
             Self::AdministratorLogin => ADMINISTRATOR_LOGIN_MAXIMUM_REQUESTS,
             Self::AdministratorPasswordReset => ADMINISTRATOR_PASSWORD_RESET_MAXIMUM_REQUESTS,
+            Self::AgentRegistration => AGENT_REGISTRATION_MAXIMUM_REQUESTS,
         }
     }
 
@@ -43,6 +47,7 @@ impl AuthenticationRateLimitOperation {
             Self::AccountRegistration => ACCOUNT_REGISTRATION_WINDOW_SECONDS,
             Self::AccountPasswordReset => ACCOUNT_PASSWORD_RESET_WINDOW_SECONDS,
             Self::AdministratorPasswordReset => ADMINISTRATOR_PASSWORD_RESET_WINDOW_SECONDS,
+            Self::AgentRegistration => AGENT_REGISTRATION_WINDOW_SECONDS,
         }
     }
 }

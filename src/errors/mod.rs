@@ -1,9 +1,13 @@
 pub mod account_auth_errors;
 pub mod admin_auth_errors;
+pub mod agent_errors;
 pub mod app_error;
 pub mod authentication_rate_limit_errors;
 pub mod community_errors;
 pub mod directory_errors;
+pub mod discussion_errors;
 pub mod profile_errors;
 pub mod request_origin_errors;
 pub mod request_timeout_errors;
+pub mod research_errors;
+pub mod research_finding_errors;

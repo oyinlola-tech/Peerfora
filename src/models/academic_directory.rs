@@ -3,6 +3,18 @@ use sqlx::FromRow;
 use uuid::Uuid;
 
 #[derive(FromRow, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct InstitutionDirectoryEntry {
+    pub id: Uuid,
+    pub slug: String,
+    pub display_name: String,
+    pub country_code: Option<String>,
+    pub region_name: Option<String>,
+    pub institution_type: String,
+    pub official_website: Option<String>,
+}
+
+#[derive(FromRow, Serialize)]
 pub struct AcademicSubject {
     pub id: Uuid,
     pub slug: String,
