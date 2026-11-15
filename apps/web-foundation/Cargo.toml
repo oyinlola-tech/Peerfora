@@ -1,0 +1,31 @@
+[package]
+name = "peerfora-web-foundation"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+default = ["ssr"]
+hydrate = ["dep:wasm-bindgen", "leptos/hydrate"]
+ssr = [
+    "dep:axum",
+    "dep:leptos_axum",
+    "dep:tokio",
+    "dep:tower-http",
+    "leptos/ssr",
+    "leptos_meta/ssr",
+    "leptos_router/ssr",
+]
+
+[dependencies]
+axum = { version = "0.8", optional = true }
+leptos = { version = "0.8" }
+leptos_axum = { version = "0.8", optional = true }
+leptos_meta = "0.8"
+leptos_router = "0.8"
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"], optional = true }
+tower-http = { version = "0.6", features = ["set-header"], optional = true }
+wasm-bindgen = { version = "0.2", optional = true }
