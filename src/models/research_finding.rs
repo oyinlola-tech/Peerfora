@@ -51,3 +51,20 @@ pub struct ResearchFinding {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+
+#[derive(FromRow)]
+pub struct ResearchFindingRevision {
+    pub finding_id: Uuid,
+    pub project_id: Uuid,
+    pub revision_number: i16,
+    pub title: String,
+    pub statement: String,
+    pub details: String,
+    pub authored_by_username: String,
+    pub review_status: String,
+    pub reviewed_by_username: Option<String>,
+    pub reviewer_notes: Option<String>,
+    pub citations: Json<Vec<ResearchFindingCitation>>,
+    pub created_at: DateTime<Utc>,
+    pub reviewed_at: Option<DateTime<Utc>>,
+}

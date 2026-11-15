@@ -2,15 +2,20 @@ use axum::{Router, routing::get};
 
 use crate::{
     constants::research::{
-        RESEARCH_INVITATION_ACCEPT_ROUTE, RESEARCH_INVITATION_REJECT_ROUTE,
-        RESEARCH_INVITATIONS_ROUTE, RESEARCH_PROJECT_INVITATIONS_ROUTE,
+        RESEARCH_FINDING_PUBLISH_ROUTE, RESEARCH_FINDING_RETRACT_ROUTE,
+        RESEARCH_FINDING_REVIEW_ROUTE, RESEARCH_FINDING_REVISIONS_ROUTE, RESEARCH_FINDING_ROUTE,
+        RESEARCH_FINDING_SUBMIT_ROUTE, RESEARCH_INVITATION_ACCEPT_ROUTE,
+        RESEARCH_INVITATION_REJECT_ROUTE, RESEARCH_INVITATIONS_ROUTE,
+        RESEARCH_PROJECT_FINDINGS_ROUTE, RESEARCH_PROJECT_INVITATIONS_ROUTE,
         RESEARCH_PROJECT_MEMBER_ROUTE, RESEARCH_PROJECT_MEMBERSHIP_ROUTE, RESEARCH_PROJECT_ROUTE,
-        RESEARCH_PROJECTS_ROUTE, RESEARCH_TASK_ACCEPT_ROUTE, RESEARCH_TASK_ASSIGN_ROUTE,
-        RESEARCH_TASK_CANCEL_ROUTE, RESEARCH_TASK_QUEUE_ROUTE, RESEARCH_TASK_REVIEW_ROUTE,
-        RESEARCH_TASK_ROUTE, RESEARCH_TASK_START_ROUTE, RESEARCH_TASK_SUBMISSIONS_ROUTE,
-        RESEARCH_TASKS_ROUTE,
+        RESEARCH_PROJECT_SOURCES_ROUTE, RESEARCH_PROJECTS_ROUTE, RESEARCH_TASK_ACCEPT_ROUTE,
+        RESEARCH_TASK_ASSIGN_ROUTE, RESEARCH_TASK_CANCEL_ROUTE, RESEARCH_TASK_QUEUE_ROUTE,
+        RESEARCH_TASK_REVIEW_ROUTE, RESEARCH_TASK_ROUTE, RESEARCH_TASK_START_ROUTE,
+        RESEARCH_TASK_SUBMISSIONS_ROUTE, RESEARCH_TASKS_ROUTE,
     },
-    controllers::{research_project_controller, research_task_controller},
+    controllers::{
+        research_finding_controller, research_project_controller, research_task_controller,
+    },
     models::app_state::AppState,
 };
 
@@ -88,5 +93,40 @@ pub fn build_routes() -> Router<AppState> {
         .route(
             RESEARCH_TASK_CANCEL_ROUTE,
             axum::routing::post(research_task_controller::cancel_research_task),
+        )
+        .route(
+            RESEARCH_PROJECT_SOURCES_ROUTE,
+            get(research_finding_controller::list_research_sources)
+                .post(research_finding_controller::create_research_source),
+        )
+        .route(
+            RESEARCH_PROJECT_FINDINGS_ROUTE,
+            get(research_finding_controller::list_research_findings)
+                .post(research_finding_controller::create_research_finding),
+        )
+        .route(
+            RESEARCH_FINDING_ROUTE,
+            get(research_finding_controller::find_research_finding)
+                .put(research_finding_controller::update_research_finding),
+        )
+        .route(
+            RESEARCH_FINDING_SUBMIT_ROUTE,
+            axum::routing::post(research_finding_controller::submit_research_finding_for_review),
+        )
+        .route(
+            RESEARCH_FINDING_REVIEW_ROUTE,
+            axum::routing::post(research_finding_controller::review_research_finding),
+        )
+        .route(
+            RESEARCH_FINDING_PUBLISH_ROUTE,
+            axum::routing::post(research_finding_controller::publish_research_finding),
+        )
+        .route(
+            RESEARCH_FINDING_RETRACT_ROUTE,
+            axum::routing::post(research_finding_controller::retract_research_finding),
+        )
+        .route(
+            RESEARCH_FINDING_REVISIONS_ROUTE,
+            get(research_finding_controller::list_research_finding_revisions),
         )
 }

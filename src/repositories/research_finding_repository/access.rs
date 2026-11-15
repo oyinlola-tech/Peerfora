@@ -1,10 +1,7 @@
 use sqlx::{PgConnection, Postgres, Transaction};
 use uuid::Uuid;
 
-use crate::{
-    enums::research::ResearchFindingError,
-    errors::app_error::AppError,
-};
+use crate::{enums::research::ResearchFindingError, errors::app_error::AppError};
 
 #[derive(sqlx::FromRow)]
 pub struct LockedResearchFinding {
@@ -77,7 +74,10 @@ pub async fn require_project_writer(
     actor_id: Uuid,
 ) -> Result<(), AppError> {
     let role = require_project_member(connection, project_id, actor_id).await?;
-    if matches!(role.as_str(), "owner" | "supervisor" | "researcher" | "contributor") {
+    if matches!(
+        role.as_str(),
+        "owner" | "supervisor" | "researcher" | "contributor"
+    ) {
         Ok(())
     } else {
         Err(ResearchFindingError::PermissionDenied.into())
@@ -114,7 +114,12 @@ pub async fn lock_research_finding(
 }
 
 pub fn map_duplicate_doi(error: sqlx::Error) -> AppError {
-    if error.as_database_error().and_then(|error| error.code()).as_deref() == Some("23505") {
+    if error
+        .as_database_error()
+        .and_then(|error| error.code())
+        .as_deref()
+        == Some("23505")
+    {
         ResearchFindingError::DuplicateDoi.into()
     } else {
         AppError::Internal

@@ -47,8 +47,7 @@ pub fn validate_research_source(
         ResearchFindingError::SourceDoiInvalid,
     )?;
     let source_url = validate_optional_url(request.source_url.as_deref())?;
-    if request.source_type == ResearchSourceType::Doi
-        && !doi.as_deref().is_some_and(is_doi_shaped)
+    if request.source_type == ResearchSourceType::Doi && !doi.as_deref().is_some_and(is_doi_shaped)
     {
         return Err(ResearchFindingError::SourceDoiInvalid);
     }
@@ -204,9 +203,9 @@ fn validate_optional_url(value: Option<&str>) -> Result<Option<String>, Research
         .map_err(|_| ResearchFindingError::SourceUrlInvalid)?;
     if value.chars().count() > research::MAX_RESEARCH_SOURCE_URL_LENGTH
         || uri.scheme_str() != Some("https")
-        || uri.authority().is_none_or(|authority| {
-            authority.host().is_empty() || authority.as_str().contains('@')
-        })
+        || uri
+            .authority()
+            .is_none_or(|authority| authority.host().is_empty() || authority.as_str().contains('@'))
     {
         return Err(ResearchFindingError::SourceUrlInvalid);
     }

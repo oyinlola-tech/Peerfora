@@ -4,7 +4,7 @@ use uuid::Uuid;
 use crate::{
     enums::research::ResearchFindingError,
     errors::app_error::AppError,
-    models::research_finding::ResearchFinding,
+    models::research_finding::{ResearchFinding, ResearchFindingRevision},
 };
 
 const FINDING_FIELDS: &str = "SELECT finding.id, finding.project_id,
@@ -84,28 +84,49 @@ pub async fn list_research_findings(
         .map_err(|_| AppError::Internal)
 }
 
-pub async fn require_active_project_member(
+pub async fn list_research_finding_revisions(
     pool: &PgPool,
-    project_id: Uuid,
+    finding_id: Uuid,
     account_id: Uuid,
-) -> Result<(), AppError> {
-    let exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS (
-            SELECT 1 FROM research_projects project
-            JOIN human_actor_identities identity ON identity.account_id = $2
-            JOIN research_project_members member ON member.project_id = project.id
-                AND member.actor_id = identity.actor_id AND member.membership_status = 'active'
-            WHERE project.id = $1 AND project.project_status = 'active'
-        )",
+) -> Result<Vec<ResearchFindingRevision>, AppError> {
+    query_as::<_, ResearchFindingRevision>(
+        "SELECT revision.finding_id, revision.project_id, revision.revision_number,
+            revision.title, revision.statement, revision.details,
+            author.username AS authored_by_username, revision.review_status,
+            reviewer.username AS reviewed_by_username, revision.reviewer_notes,
+            COALESCE((
+                SELECT jsonb_agg(jsonb_build_object(
+                    'sourceId', source.id, 'sourceType', source.source_type,
+                    'title', source.title, 'doi', source.doi, 'sourceUrl', source.source_url,
+                    'authors', source.authors, 'publicationYear', source.publication_year,
+                    'provenance', source.provenance, 'license', source.license,
+                    'locator', citation.citation_locator, 'context', citation.citation_context
+                ) ORDER BY source.title)
+                FROM research_finding_revision_sources citation
+                JOIN research_sources source ON source.id = citation.source_id
+                WHERE citation.finding_id = revision.finding_id
+                    AND citation.revision_number = revision.revision_number
+            ), '[]'::jsonb) AS citations,
+            revision.created_at, revision.reviewed_at
+        FROM research_finding_revisions revision
+        JOIN research_findings finding ON finding.id = revision.finding_id
+        JOIN research_projects project ON project.id = revision.project_id
+            AND project.project_status = 'active'
+        JOIN human_actor_identities member_identity ON member_identity.account_id = $2
+        JOIN research_project_members member ON member.project_id = revision.project_id
+            AND member.actor_id = member_identity.actor_id AND member.membership_status = 'active'
+        JOIN human_actor_identities author_identity
+            ON author_identity.actor_id = revision.authored_by_actor_id
+        JOIN accounts author ON author.id = author_identity.account_id
+        LEFT JOIN human_actor_identities reviewer_identity
+            ON reviewer_identity.actor_id = revision.reviewed_by_actor_id
+        LEFT JOIN accounts reviewer ON reviewer.id = reviewer_identity.account_id
+        WHERE revision.finding_id = $1
+        ORDER BY revision.revision_number DESC",
     )
-    .bind(project_id)
+    .bind(finding_id)
     .bind(account_id)
-    .fetch_one(pool)
+    .fetch_all(pool)
     .await
-    .map_err(|_| AppError::Internal)?;
-    if exists {
-        Ok(())
-    } else {
-        Err(ResearchFindingError::ProjectNotFound.into())
-    }
+    .map_err(|_| AppError::Internal)
 }

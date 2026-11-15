@@ -2,8 +2,7 @@ use sqlx::{Postgres, Transaction};
 use uuid::Uuid;
 
 use crate::{
-    enums::research::ResearchFindingError,
-    errors::app_error::AppError,
+    enums::research::ResearchFindingError, errors::app_error::AppError,
     validations::research_finding_validation::ValidatedResearchFinding,
 };
 

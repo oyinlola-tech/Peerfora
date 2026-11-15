@@ -55,6 +55,10 @@ pub const RESEARCH_FINDING_SUBMIT_ROUTE: &str = "/api/v1/research/findings/{find
 pub const RESEARCH_FINDING_REVIEW_ROUTE: &str = "/api/v1/research/findings/{finding_id}/review";
 pub const RESEARCH_FINDING_PUBLISH_ROUTE: &str = "/api/v1/research/findings/{finding_id}/publish";
 pub const RESEARCH_FINDING_RETRACT_ROUTE: &str = "/api/v1/research/findings/{finding_id}/retract";
+pub const RESEARCH_FINDING_REVISIONS_ROUTE: &str =
+    "/api/v1/research/findings/{finding_id}/revisions";
+pub const DEFAULT_RESEARCH_SOURCE_LIST_LIMIT: i64 = 50;
+pub const MAX_RESEARCH_SOURCE_LIST_LIMIT: i64 = 250;
 pub const DEFAULT_RESEARCH_FINDING_LIST_LIMIT: i64 = 20;
 pub const MAX_RESEARCH_FINDING_LIST_LIMIT: i64 = 50;
 pub const MAX_RESEARCH_SOURCE_TITLE_LENGTH: usize = 500;

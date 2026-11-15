@@ -7,7 +7,7 @@ pub mod agent_identity;
 pub mod app_state;
 pub mod community;
 pub mod discussion;
-pub mod research_project;
 pub mod research_finding;
+pub mod research_project;
 pub mod research_task;
 pub mod user_profile;

@@ -2,8 +2,7 @@ use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 use crate::{
-    enums::research::ResearchFindingError,
-    errors::app_error::AppError,
+    enums::research::ResearchFindingError, errors::app_error::AppError,
     validations::research_finding_validation::ValidatedResearchFinding,
 };
 
@@ -75,13 +74,7 @@ pub async fn update_research_finding(
     } else {
         "draft"
     };
-    update_latest_revision_pointer(
-        &mut transaction,
-        finding.id,
-        revision_number,
-        status,
-    )
-    .await?;
+    update_latest_revision_pointer(&mut transaction, finding.id, revision_number, status).await?;
     insert_finding_revision(
         &mut transaction,
         finding.id,

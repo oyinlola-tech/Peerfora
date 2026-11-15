@@ -17,6 +17,7 @@ pub mod health_controller;
 pub mod institution_directory_controller;
 pub mod profile_controller;
 pub mod research_auth;
+pub mod research_finding_controller;
 pub mod research_project_controller;
 pub mod research_task_controller;
 pub mod social_auth_controller;

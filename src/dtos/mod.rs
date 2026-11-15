@@ -13,6 +13,6 @@ pub mod discussion;
 pub mod health_response;
 pub mod institution_directory_query;
 pub mod profile_requests;
-pub mod research_project;
 pub mod research_finding;
+pub mod research_project;
 pub mod research_task;

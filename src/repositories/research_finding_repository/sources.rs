@@ -2,8 +2,7 @@ use sqlx::{PgPool, query_as};
 use uuid::Uuid;
 
 use crate::{
-    errors::app_error::AppError,
-    models::research_finding::ResearchSource,
+    errors::app_error::AppError, models::research_finding::ResearchSource,
     validations::research_finding_validation::ValidatedResearchSource,
 };
 

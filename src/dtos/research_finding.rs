@@ -3,11 +3,11 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    constants::research::{
-        DEFAULT_RESEARCH_FINDING_LIST_LIMIT, MAX_RESEARCH_FINDING_LIST_LIMIT,
-    },
+    constants::research::{DEFAULT_RESEARCH_FINDING_LIST_LIMIT, MAX_RESEARCH_FINDING_LIST_LIMIT},
     enums::research::{ResearchFindingReviewDecision, ResearchSourceType},
-    models::research_finding::{ResearchFinding, ResearchFindingCitation, ResearchSource},
+    models::research_finding::{
+        ResearchFinding, ResearchFindingCitation, ResearchFindingRevision, ResearchSource,
+    },
 };
 
 #[derive(Deserialize)]
@@ -144,6 +144,44 @@ impl From<ResearchFinding> for ResearchFindingResponse {
             citations: finding.citations.0,
             created_at: finding.created_at,
             updated_at: finding.updated_at,
+        }
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ResearchFindingRevisionResponse {
+    pub finding_id: Uuid,
+    pub project_id: Uuid,
+    pub revision_number: i16,
+    pub title: String,
+    pub statement: String,
+    pub details: String,
+    pub authored_by_username: String,
+    pub review_status: String,
+    pub reviewed_by_username: Option<String>,
+    pub reviewer_notes: Option<String>,
+    pub citations: Vec<ResearchFindingCitation>,
+    pub created_at: DateTime<Utc>,
+    pub reviewed_at: Option<DateTime<Utc>>,
+}
+
+impl From<ResearchFindingRevision> for ResearchFindingRevisionResponse {
+    fn from(revision: ResearchFindingRevision) -> Self {
+        Self {
+            finding_id: revision.finding_id,
+            project_id: revision.project_id,
+            revision_number: revision.revision_number,
+            title: revision.title,
+            statement: revision.statement,
+            details: revision.details,
+            authored_by_username: revision.authored_by_username,
+            review_status: revision.review_status,
+            reviewed_by_username: revision.reviewed_by_username,
+            reviewer_notes: revision.reviewer_notes,
+            citations: revision.citations.0,
+            created_at: revision.created_at,
+            reviewed_at: revision.reviewed_at,
         }
     }
 }
