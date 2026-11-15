@@ -16,5 +16,6 @@ pub mod discussion_repository;
 pub mod institution_directory_repository;
 pub mod profile_repository;
 pub mod research_project_repository;
+pub mod research_finding_repository;
 pub mod research_task_repository;
 pub mod social_auth_repository;
