@@ -18,26 +18,26 @@ The route chooses an HTTP handler. Middleware handles cross-cutting request beha
 | --- | --- | --- |
 | `configs/` | Parse environment variables into typed settings | PostgreSQL, cookie behavior, country policy, SMTP, Google, Apple, and authentication rate-limit key, allowed origins, and request timeout settings |
 | `constants/` | Fixed application values | Health, account-auth, administrator-auth, and rate-limit settings; token lifetimes, cookie names, input limits |
-| `controllers/` | HTTP request and response handling | Health, student auth, administrator auth/audit/account operations, directory, communities, profiles, and preferences |
+| `controllers/` | HTTP request and response handling | Health, student auth, administrator auth/audit/account operations, directory, communities, research projects, profiles, and preferences |
 | `database/` | PostgreSQL pool, migration startup, and pinned reference-data installation | Connects to PostgreSQL, applies SQL migrations, imports the versioned country snapshot, and validates country foreign keys before serving |
 | `middlewares/` | Cross-cutting request behavior | Server-generated request correlation IDs, request logging, security response headers/body limits, configured CORS, cookie-session origin checks, request timeout, admin session and permission guards |
-| `dtos/` | API wire shapes | Student/admin auth, audit, directory, community, profile, and preference requests |
-| `enums/` | Finite domain values | Account/admin auth, authentication rate-limit operations, directory, community, profile failures, and provider identity |
+| `dtos/` | API wire shapes | Student/admin auth, agent registry, research projects, audit, directory, community, profile, and preference requests |
+| `enums/` | Finite domain values | Account/admin/agent auth, authentication rate-limit operations, directory, community, profile failures, and provider identity |
 | `errors/` | Error types and HTTP mapping | Stable domain errors, including admin auth/permission failures, rate limits, and safe database/setup responses |
 | `interfaces/` | Contracts at real external boundaries | `EmailSender` separates account use cases from SMTP transport |
 | `integrations/` | External service adapters and integration-specific message templates | SMTP implementation of `EmailSender` and detailed neutral email verification, password reset, and administrator invitation copy, kept separate from use-case logic until brand tokens are approved |
 | `jobs/` | Independent background work | Remove expired auth, reset, session, and social-flow records |
 | `loaders/` | Startup wiring | Routes, request logging, and the expired-token job |
 | `middlewares/` | Cross-cutting request behavior | Request method/path/status and correlation ID logging without query strings |
-| `models/` | Persisted data and shared app state | Student/admin identities, audit entries, directory, community, profile, pool and adapters |
-| `repositories/` | SQL reads, writes, and transactions | Account/admin auth, account administration, admin RBAC/audit, subject search, community, profile, and preference storage |
-| `routes/` | HTTP method/path mapping | Health, student/admin auth and account search, directory, community, and profile routes |
-| `services/<domain>/commands/` | State-changing domain use cases | Student/admin authentication, bootstrap, invitations, MFA, account suspension/reinstatement, session revocation, community membership, profile and preference updates |
-| `services/<domain>/queries/` | Read-only domain use cases | Student/admin session lookup, audit/account administration search, academic subject search, community discovery, and profile retrieval |
+| `models/` | Persisted data and shared app state | Human/agent identities, student/admin auth, research projects, audit entries, directory, community, profile, pool and adapters |
+| `repositories/` | SQL reads, writes, and transactions | Account/agent/admin auth, account administration, admin RBAC/audit, research projects, directory, community, profile, and preference storage |
+| `routes/` | HTTP method/path mapping | Health, student/agent/admin auth and account search, research, directory, community, and profile routes |
+| `services/<domain>/commands/` | State-changing domain use cases | Student/agent/admin identity registration, research project lifecycle and memberships, bootstrap, invitations, MFA, account suspension/reinstatement, session revocation, community membership, profile and preference updates |
+| `services/<domain>/queries/` | Read-only domain use cases | Student/agent/admin session lookup, research project access and invitations, audit/account administration search, academic and institution directory search, community discovery, and profile retrieval |
 | `utils/` | Stateless reusable helpers | Argon2, one-time token hashing, TOTP construction, authenticated secret encryption, request context, and language/email normalization |
 | `validations/` | Incoming data syntax checks | Email, date format, and two-letter country-code validation |
 
-`communities`, `academic_directory`, and `profiles` contain initial Phase Two use cases. Profiles and preferences are separate from authentication records; public and own-profile query shapes differ to protect private account data. `discussions`, `discovery`, `moderation`, `notifications`, `institutions`, `memberships`, `voting`, `reputation`, `feeds`, and `bookmarks` remain planned domains with no implemented use cases. The community repository writes audit and outbox records transactionally, but there is no outbox worker yet. The background job currently handles auth cleanup; email remains request-driven until a durable delivery queue is implemented. API JSON bodies are capped at 1 MiB. Responses receive no-store, content-type, referrer, framing, and content-security headers; HSTS is emitted only when `PEERFORA_ENV=production`.
+`communities`, `academic_directory`, `institutions`, `agents`, `research`, `discussions`, and `profiles` contain initial use cases. Communities support human-authored text, question, and discussion posts plus threaded human-authored comments; post authors must be typed human actors, replies must reference a comment in the same post, and private/restricted discussion reads require active membership. Post editing/deletion, voting, moderation, and agent/institution-authored content remain unimplemented. Research supports private-by-default projects, subject links, owner-only metadata updates/archive, role-scoped human invitations, invitation acceptance/rejection, membership-guarded projects and tasks, and human task assignment/review. Research findings retain immutable contributor-attributed revisions, project-scoped source metadata, citation links, independent project review, publication, corrections, and retraction; public reads expose only the published revision while corrections are pending. DOI/source URL metadata is user-submitted and is not remotely verified. Institutional restrictions, project ownership transfer, and administrative project review remain unimplemented. The institution domain currently searches active directory records; directory presence does not establish institutional verification. The agent domain registers and lists operator-owned identities; all registrations begin pending, capability requests are not grants, autonomy is disabled, and registration creates no machine credential. Profiles and preferences are separate from authentication records; public and own-profile query shapes differ to protect private account data. `discovery`, `moderation`, `notifications`, `memberships`, `voting`, `reputation`, `feeds`, `bookmarks`, and `developer applications` remain planned domains with no implemented use cases. The community repository writes audit and outbox records transactionally, but there is no outbox worker yet. The background job currently handles auth cleanup; email remains request-driven until a durable delivery queue is implemented. API JSON bodies are capped at 1 MiB. Responses receive no-store, content-type, referrer, framing, and content-security headers; HSTS is emitted only when `PEERFORA_ENV=production`.
 
 ## Account-auth flow
 
@@ -65,11 +65,15 @@ Administrator auth, MFA enrollment/verification and controlled reset, recovery-c
 
 The API remains one deployable Rust modular monolith. A domain may call another domain's public service or interface, never another domain's repository or tables. Keep writes and transactions inside their owning repository/domain. PostgreSQL is the current source of truth. Add a queue, cache, replica, or separate service only when an actual workflow or operational evidence requires it.
 
+## Participant identity boundary
+
+The database has typed human, agent, and institution actor identities. Existing and newly registered human accounts map to human actors; agent registration creates an operator-owned pending agent identity. Institution search remains a directory lookup and does not create a verified institutional identity. Deferred subtype constraints ensure each actor has exactly one identity matching its actor type. Initial posts and comments reference a participant actor and constrain the author type to human; comment parent relationships are constrained to the same post. Agent/institution-authored discussion content remains unimplemented. Agent or institution status never implies student verification or administrative access. Agents have no machine credentials, no granted capability, and no default access to private research or student data. Public content is not training consent. The product roadmap and current implementation status are in [master-engineering-specification.md](master-engineering-specification.md) and [status.md](status.md).
+
 ## Endpoint reference
 
 Every registered endpoint, with its request and response contracts, authentication, cookies, and errors, is documented in [endpoints.md](endpoints.md). Update that reference alongside route, DTO, or error changes.
 
-The product and platform roadmap is in [master-engineering-specification.md](master-engineering-specification.md). Its opening codebase-alignment section defines how roadmap items fit the current API structure and implementation phases.
+Product requirements are in [product-requirements.md](product-requirements.md). The technical roadmap is in [master-engineering-specification.md](master-engineering-specification.md); its opening codebase-alignment section defines how roadmap items fit the current API structure and implementation phases.
 
 ## Not implemented yet
 
@@ -78,7 +82,7 @@ Administrator invitation issue/accept, administrator lifecycle management and co
 
 ## Cross-platform and future boundaries
 
-The student web, iOS, Android, student desktop, admin desktop, and widget projects are separate scaffolds under `apps/` and `widgets/`. They do not own authorization or persistence. The admin Tauri project has separate identity/configuration from the student app but is not connected to the implemented backend admin APIs. The design freeze remains in effect.
+The student web, Research, Agents, Developers, Institutions, Knowledge, iOS, Android, student desktop, admin desktop, and widget projects are separate scaffolds under `apps/` and `widgets/`. The five ecosystem web packages share only neutral Leptos routing and document-shell code from `apps/web-foundation`; they remain independently configured and deployable packages. Clients do not own authorization or persistence. The admin Tauri project has separate identity/configuration from the student app but is not connected to the implemented backend admin APIs. The design freeze remains in effect.
 
 There is no shared Rust SDK/UniFFI, OpenAPI generator, realtime transport, AI/recommendation service, or outbox worker. Do not create service boundaries or connect optional Redis/search/object-storage containers until a concrete implemented workflow requires them. Current auth, directory, profile and community capabilities and known omissions are summarized in [status.md](status.md).
 

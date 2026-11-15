@@ -44,11 +44,29 @@ This document describes every route currently registered by the API. It is based
 | `GET` | `/api/v1/countries` | Search active ISO country and territory reference data |
 | `GET` | `/api/v1/academic-levels` | List canonical academic levels and aliases |
 | `GET` | `/api/v1/subjects` | Search the seeded global academic subject directory |
+| `GET` | `/api/v1/institutions` | Search active institution directory records |
+| `POST` | `/api/v1/agents` | Register an agent identity for the authenticated human operator |
+| `GET` | `/api/v1/agents/me` | List agent identities operated by the authenticated human |
+| `GET` | `/api/v1/research/projects` | List public projects and projects visible to the authenticated member |
+| `POST` | `/api/v1/research/projects` | Create a private research project |
+| `GET` | `/api/v1/research/projects/{project_id}` | Retrieve an active public or member-visible project |
+| `PATCH` | `/api/v1/research/projects/{project_id}` | Update a project as its owner |
+| `DELETE` | `/api/v1/research/projects/{project_id}` | Archive a project as its owner |
+| `POST` | `/api/v1/research/projects/{project_id}/invitations` | Invite an active account to a project |
+| `GET` | `/api/v1/research/invitations` | List the authenticated user's pending research invitations |
+| `POST` | `/api/v1/research/projects/{project_id}/invitations/accept` | Accept a research project invitation |
+| `POST` | `/api/v1/research/projects/{project_id}/invitations/reject` | Reject a research project invitation |
+| `DELETE` | `/api/v1/research/projects/{project_id}/membership` | Leave a research project |
+| `DELETE` | `/api/v1/research/projects/{project_id}/members/{username}` | Remove a member or cancel their invitation as project owner |
 | `GET` | `/api/v1/communities` | List public and restricted active communities |
 | `POST` | `/api/v1/communities` | Create a community and become its owner |
 | `GET` | `/api/v1/communities/{slug}` | Retrieve a discoverable community if visibility permits |
 | `PUT` | `/api/v1/communities/{slug}/membership` | Join a community or request membership |
 | `DELETE` | `/api/v1/communities/{slug}/membership` | Leave a community |
+| `GET` | `/api/v1/communities/{slug}/posts` | List active posts visible to the caller |
+| `POST` | `/api/v1/communities/{slug}/posts` | Create a human-authored community post |
+| `GET` | `/api/v1/posts/{post_id}/comments` | List visible threaded comments for a post |
+| `POST` | `/api/v1/posts/{post_id}/comments` | Add a human-authored comment or reply |
 | `GET` | `/api/v1/profiles/me` | Retrieve the authenticated user's private profile view |
 | `PATCH` | `/api/v1/profiles/me` | Update the authenticated user's profile |
 | `GET` | `/api/v1/profiles/{username}` | Retrieve a public profile |
@@ -396,6 +414,351 @@ Searches active global academic subjects and their aliases. No authentication is
 
 **Errors:** `400 Search term cannot exceed 100 characters`; `400` for a malformed `limit`; `500 An internal error occurred` for a database query failure.
 
+## Research projects
+
+Research project endpoints accept either `Authorization: Bearer <session-token>` or the `peerfora_session` cookie where authentication is required. A project created without an explicit `visibility` is private. This implementation supports `private`, `invitation_only`, and `public`; institution-restricted projects await verified institutional identities and policy enforcement.
+
+### `GET /api/v1/research/projects`
+
+Requires an authenticated human account. Lists active projects that are public or where the caller has an active project membership. Pending invitees do not see project content. `limit` is optional, defaults to 20, and is clamped to 1–50.
+
+**Success:** `200 OK` with an array of project responses containing `id`, pseudonymous `ownerUsername`, `title`, nullable `abstract`, `description`, `objectives`, `researchQuestions`, `subjectIds`, `visibility`, `projectStatus`, nullable `currentMemberRole`, `createdAt`, and `updatedAt`.
+
+**Errors:** `401 Student session is invalid`; `400` for a malformed `limit`; `500 An internal error occurred` for a database failure.
+
+### `POST /api/v1/research/projects`
+
+Requires an authenticated active human account with a verified email address.
+
+**Request JSON:** `title` (3–160 characters), optional nullable `abstract` (maximum 2000 characters), optional `description` (maximum 10000 characters), optional `objectives` and `researchQuestions` arrays (at most 20 values, each 1–500 characters), optional `subjectIds` (at most 20 unique active subject IDs), and optional `visibility` (`private`, `invitation_only`, or `public`, default `private`).
+
+**Success:** `201 Created` with the project response. The creator's pseudonymous username is returned as the owner; ownership and active owner membership are stored in the same transaction.
+
+**Errors:** `401 Student session is invalid`; `400` for title, field-length, array-size, duplicate-subject, or unavailable-subject validation; `403 This account cannot create a research project`; `413` oversized body; `415` missing/invalid JSON content type; `422` invalid request field types or enum values; `500 An internal error occurred` for persistence failure.
+
+### `GET /api/v1/research/projects/{project_id}`
+
+Public projects can be read without authentication. Private and invitation-only projects require an active project membership. Pending invitations do not grant read access. Missing, archived, suspended, or unauthorized private projects return the same not-found response.
+
+**Success:** `200 OK` with the project response described above.
+
+**Errors:** `400` malformed UUID; `401 Student session is invalid` if a supplied session is invalid; `404 Research project was not found`; `500 An internal error occurred` for a database failure.
+
+### `PATCH /api/v1/research/projects/{project_id}`
+
+Requires an authenticated project owner. Other active members cannot modify project metadata. Omitted fields retain their current values; an explicit `abstract: null` clears the abstract. The request accepts any subset of the create fields except `visibility`.
+
+**Success:** `200 OK` with the updated project response.
+
+**Errors:** `400` malformed UUID or invalid title, abstract, description, objectives, questions, or subjects; `401 Student session is invalid`; `403 You cannot manage this research project`; `404 Research project was not found`; `413`, `415`, or `422` for request extraction errors; `500 An internal error occurred` for persistence failure.
+
+### `DELETE /api/v1/research/projects/{project_id}`
+
+Requires the project owner. Performs a reversible lifecycle change by setting the project status to `archived`; it does not delete its data. Archived projects are no longer returned by these public/member read endpoints.
+
+**Success:** `204 No Content`.
+
+**Errors:** `400` malformed UUID; `401 Student session is invalid`; `403 You cannot manage this research project`; `404 Research project was not found`; `409 This research project is not accepting changes`; `500 An internal error occurred`.
+
+### `POST /api/v1/research/projects/{project_id}/invitations`
+
+Requires an authenticated active project owner or supervisor. The invitee is selected by case-insensitive Peerfora username and must be an active account with verified email. Invited roles are `supervisor`, `researcher`, `contributor`, `reviewer`, or `observer`; a caller cannot invite the project owner to another role. Invitations do not grant project-content access until accepted.
+
+**Request JSON:** `username` (3–24 ASCII letters, numbers, or underscores) and `role` (one of the supported roles).
+
+**Success:** `202 Accepted` with an empty body.
+
+**Errors:** `400 Username must be 3 to 24 letters, numbers, or underscores`; `401 Student session is invalid`; `403 You cannot manage this research project`; `404 Research project was not found` or `The invited account is not available`; `409 This research project is not accepting changes` or `This person already has access or a pending invitation`; `413`, `415`, or `422` for request extraction errors; `500 An internal error occurred`.
+
+### `GET /api/v1/research/invitations`
+
+Requires an authenticated human account. Returns only the caller's pending invitations, including project ID/title, inviter username, assigned role, and invitation time.
+
+**Success:** `200 OK` with an array of invitation responses.
+
+**Errors:** `401 Student session is invalid`; `500 An internal error occurred`.
+
+### `POST /api/v1/research/projects/{project_id}/invitations/accept` and `POST /api/v1/research/projects/{project_id}/invitations/reject`
+
+Require the account that owns the pending invitation. Accepting activates project membership atomically; rejecting records the rejection. Repeating either operation after the pending state has ended returns not found.
+
+**Success:** `204 No Content`.
+
+**Errors:** `400` malformed UUID; `401 Student session is invalid`; `404 Research project was not found` or `Research project invitation was not found`; `409 This research project is not accepting changes`; `500 An internal error occurred`.
+
+### `DELETE /api/v1/research/projects/{project_id}/membership`
+
+Requires an authenticated active project member. Members can leave; the owner must transfer project ownership before leaving.
+
+**Success:** `204 No Content`.
+
+**Errors:** `400` malformed UUID; `401 Student session is invalid`; `404 Research project was not found` or `Research project member was not found`; `409 Transfer project ownership before leaving`; `500 An internal error occurred`.
+
+### `DELETE /api/v1/research/projects/{project_id}/members/{username}`
+
+Requires the project owner. Removes an active member or cancels a pending invitation by username. The owner cannot remove themselves.
+
+**Success:** `204 No Content`.
+
+**Errors:** `400` malformed UUID; `401 Student session is invalid`; `403 You cannot manage this research project`; `404 Research project was not found` or `Research project member was not found`; `409 Transfer project ownership before removing its owner`; `500 An internal error occurred`.
+
+## Research tasks
+
+All task routes require an authenticated human account, supplied by `Authorization: Bearer <session-token>` or the `peerfora_session` cookie. Tasks and their results are restricted to active members of the associated project, even when the project is public. Project owners and supervisors manage tasks; researchers, contributors, and reviewers may be assigned. Only an assignee can accept, start, or submit a result. An assignee cannot review their own submission. Task source and tool fields are declarative metadata: no source is fetched and no tool or agent is executed by these endpoints. Task lists accept optional `limit`, default 20, clamped to 1–50.
+
+Task responses contain `id`, `projectId`, pseudonymous `createdByUsername`, `title`, `objective`, `scope`, `allowedDataSources`, `permittedTools`, `expectedDeliverables`, `maxRuntimeSeconds`, `maxResultBytes`, `status`, nullable `assignedUsername`, nullable `assignmentAcceptedAt`, nullable latest submission number/result/submitter/review status/reviewer/review notes, `createdAt`, and `updatedAt`. Latest result and review fields are visible only to active project members.
+
+### `GET /api/v1/research/projects/{project_id}/tasks`
+
+Lists tasks in a project visible to the authenticated active member.
+
+**Query parameters:** optional `limit` (default 20, clamped to 1–50).
+
+**Success:** `200 OK` with an array of task responses.
+
+**Errors:** `400` malformed project UUID or malformed `limit`; `401 Student session is invalid`; `404 Research project was not found` for an unavailable project or non-member; `500 An internal error occurred` for database failure.
+
+### `POST /api/v1/research/projects/{project_id}/tasks`
+
+Creates a draft task. Requires an active project owner or supervisor.
+
+**Request JSON:** required `title` (3–160 characters), `objective` (1–3000), `scope` (1–5000), and `expectedDeliverables` (1–20 entries, each 1–500); optional `allowedDataSources` (up to 20 entries, each 1–500), `permittedTools` (up to 20 entries, each 1–100), `maxRuntimeSeconds` (default 1800, range 1–86400), and `maxResultBytes` (default 200000, range 1–1000000).
+
+**Success:** `201 Created` with a task response.
+
+**Errors:** `400` for invalid task fields or limits; `401 Student session is invalid`; `403 You cannot manage this research task`; `404 Research project was not found` for an unavailable project or non-member; `413`, `415`, or `422` for request extraction errors; `500 An internal error occurred` for database failure.
+
+### `GET /api/v1/research/tasks/{task_id}`
+
+Retrieves a task and its latest submission for an active project member.
+
+**Success:** `200 OK` with a task response.
+
+**Errors:** `400` malformed task UUID; `401 Student session is invalid`; `404 Research task was not found` for an unavailable task or non-member; `500 An internal error occurred` for database failure.
+
+### `PUT /api/v1/research/tasks/{task_id}`
+
+Updates task details while the task remains a draft. Requires an active project owner or supervisor.
+
+**Request JSON:** all fields required: `title`, `objective`, `scope`, `allowedDataSources`, `permittedTools`, `expectedDeliverables`, `maxRuntimeSeconds`, and `maxResultBytes`, using the limits described for task creation.
+
+**Success:** `200 OK` with the updated task response.
+
+**Errors:** `400` invalid task fields or limits; `401 Student session is invalid`; `403 You cannot manage this research task`; `404 Research task was not found` for unavailable task/non-member; `409 This research task cannot make that state change`; `413`, `415`, or `422` for request extraction errors; `500 An internal error occurred`.
+
+### `POST /api/v1/research/tasks/{task_id}/queue`
+
+Queues a draft task. Requires an active project owner or supervisor. Empty request body.
+
+**Success:** `204 No Content`.
+
+**Errors:** `400` malformed UUID; `401 Student session is invalid`; `403 You cannot manage this research task`; `404 Research task was not found`; `409 This research task cannot make that state change`; `500 An internal error occurred`.
+
+### `POST /api/v1/research/tasks/{task_id}/assign`
+
+Assigns a queued task to an active, verified researcher, contributor, or reviewer member.
+
+**Request JSON:** `assigneeUsername` (3–24 letters, numbers, or underscores).
+
+**Success:** `204 No Content`.
+
+**Errors:** `400` malformed UUID or invalid username; `401 Student session is invalid`; `403 You cannot manage this research task`; `404 Research task was not found` or `The selected assignee is not an active project member`; `409 This research task cannot make that state change`; `413`, `415`, or `422` request extraction errors; `500 An internal error occurred`.
+
+### `POST /api/v1/research/tasks/{task_id}/accept`
+
+Accepts the assignment. Only the selected assignee may accept. Empty request body.
+
+**Success:** `204 No Content`.
+
+**Errors:** `400` malformed UUID; `401 Student session is invalid`; `403 You cannot manage this research task` when caller is not the assignee; `404 Research task was not found`; `409 This research task cannot make that state change`; `500 An internal error occurred`.
+
+### `POST /api/v1/research/tasks/{task_id}/start`
+
+Starts an accepted assignment. Only the selected assignee may start. Empty request body.
+
+**Success:** `204 No Content`.
+
+**Errors:** `400` malformed UUID; `401 Student session is invalid`; `403 You cannot manage this research task` when caller is not the assignee; `404 Research task was not found`; `409 This research task cannot make that state change`; `500 An internal error occurred`.
+
+### `POST /api/v1/research/tasks/{task_id}/submissions`
+
+Submits a result for a running task. Only the selected assignee may submit.
+
+**Request JSON:** `result` (non-empty UTF-8 text no larger than task `maxResultBytes`).
+
+**Success:** `200 OK` with the updated task response in `awaiting_review` state.
+
+**Errors:** `400` malformed UUID or invalid/oversized result; `401 Student session is invalid`; `403 You cannot manage this research task` when caller is not the assignee; `404 Research task was not found`; `409 This research task cannot make that state change`, `This research task has reached its submission limit`, or `This research task is not assigned to you`; `413`, `415`, or `422` request extraction errors; `500 An internal error occurred`.
+
+### `POST /api/v1/research/tasks/{task_id}/review`
+
+Reviews the pending submission. Requires an active project owner, supervisor, or reviewer who is not the assignee.
+
+**Request JSON:** `decision` (`approved`, `revision_requested`, or `rejected`) and optional `notes` (maximum 5000 bytes).
+
+**Success:** `204 No Content`. Approval completes the task; a revision request returns it to `assigned` while retaining submission history; rejection marks it `failed`.
+
+**Errors:** `400` malformed UUID or notes longer than 5000 bytes; `401 Student session is invalid`; `403 You cannot manage this research task` or `A research task assignee cannot review their own result`; `404 Research task was not found`; `409 This research task has no submission awaiting review`; `413`, `415`, or `422` request extraction errors; `500 An internal error occurred`.
+
+### `POST /api/v1/research/tasks/{task_id}/cancel`
+
+Cancels a draft, queued, assigned, or running task. The creator or a project owner/supervisor may cancel. Empty request body.
+
+**Success:** `204 No Content`.
+
+**Errors:** `400` malformed UUID; `401 Student session is invalid`; `403 You cannot manage this research task`; `404 Research task was not found`; `409 This research task cannot make that state change`; `500 An internal error occurred`.
+
+## Research findings and sources
+
+Authenticated routes accept `Authorization: Bearer <session-token>` or the `peerfora_session` cookie. Source creation and finding edits require an active verified human project member with writer role (`owner`, `supervisor`, `researcher`, or `contributor`). Review requires `owner`, `supervisor`, or `reviewer`, and the revision author cannot review their own revision. Publication requires `owner` or `supervisor`. An author may retract their published finding; project owners and supervisors may also retract it. DOI, source URL, provenance, and license metadata are provided by users and are not externally fetched or verified. Source URLs must use HTTPS. A public finding is readable without authentication only when its project is public; unpublished findings and private project findings remain concealed from non-members.
+
+A finding response contains `id`, `projectId`, `createdByUsername`, `authoredByUsername`, `status`, `revisionNumber`, nullable `publishedRevisionNumber`, `title`, `statement`, `details`, `citations`, `createdAt`, and `updatedAt`. Each citation contains `sourceId`, `sourceType`, `title`, nullable `doi`, nullable `sourceUrl`, `authors`, nullable `publicationYear`, `provenance`, nullable `license`, nullable `locator`, and nullable `context`. Revision responses additionally contain `reviewStatus`, nullable `reviewedByUsername`, nullable `reviewerNotes`, and nullable `reviewedAt`.
+
+### `GET /api/v1/research/projects/{project_id}/sources`
+
+Lists source records for an active project member.
+
+**Query parameters:** optional `limit`, default 50 and clamped to 1–250.
+
+**Success:** `200 OK` with source responses containing `id`, `projectId`, `sourceType`, `title`, nullable `doi`, nullable `sourceUrl`, `authors`, nullable `publicationYear`, `provenance`, nullable `license`, `createdByUsername`, and `createdAt`.
+
+**Errors:** `400` malformed UUID or `limit`; `401 Student session is invalid`; `404 Research project was not found` for a non-member or unavailable project; `500 An internal error occurred`.
+
+### `POST /api/v1/research/projects/{project_id}/sources`
+
+Creates a project-scoped source record.
+
+**Request JSON:** `sourceType` (`publication`, `doi`, `external_url`, or `dataset`), `title` (1–500 characters), `provenance` (1–2000 characters), optional `doi` (up to 255 characters; DOI source type requires the conventional `10.<registrant>/<suffix>` shape), optional `sourceUrl` (HTTPS, up to 2048 characters), optional `authors` (up to 50 non-empty names), optional `publicationYear` (1000–9999), and optional `license` (up to 500 characters). This records submitted metadata only; it does not confirm publication existence, DOI registration, URL availability, or license terms.
+
+**Success:** `201 Created` with the source response.
+
+**Errors:** `400` invalid metadata; `401 Student session is invalid`; `403 You cannot manage this research finding` when the caller lacks project writer access; `404 Research project was not found`; `409 This DOI is already recorded in the research project`; `413`, `415`, or `422` request extraction errors; `500 An internal error occurred`.
+
+### `GET /api/v1/research/projects/{project_id}/findings`
+
+Lists non-retracted findings, showing each member the latest revision. Requires an active project member.
+
+**Query parameters:** optional `limit`, default 20 and clamped to 1–50.
+
+**Success:** `200 OK` with an array of finding responses.
+
+**Errors:** `400` malformed UUID or `limit`; `401 Student session is invalid`; `404 Research project was not found` for a non-member or unavailable project; `500 An internal error occurred`.
+
+### `POST /api/v1/research/projects/{project_id}/findings`
+
+Creates a draft finding and its first immutable revision. Requires an active project writer.
+
+**Request JSON:** `title` (3–200 characters), `statement` (1–10000 characters), optional `details` (up to 20000 characters), and optional `citations` (up to 50 unique entries). Each citation requires `sourceId` from the same project and may include `locator` (up to 500 characters) and `context` (up to 2000 characters).
+
+**Success:** `201 Created` with the draft finding response. The authenticated human is recorded as the revision author.
+
+**Errors:** `400` invalid fields, duplicate citations, or a source not belonging to this project; `401 Student session is invalid`; `403 You cannot manage this research finding`; `404 Research project was not found`; `413`, `415`, or `422` request extraction errors; `500 An internal error occurred`.
+
+### `GET /api/v1/research/findings/{finding_id}`
+
+Returns the latest revision to an active project member. Anonymous or non-member access returns only the published revision of an active public project. During correction review, the previously published revision remains public until a replacement is approved and published.
+
+**Success:** `200 OK` with a finding response.
+
+**Errors:** `400` malformed UUID; `401 Student session is invalid` when an invalid session is supplied; `404 Research finding was not found` for an unavailable, retracted, unpublished public, or non-member private finding; `500 An internal error occurred`.
+
+### `GET /api/v1/research/findings/{finding_id}/revisions`
+
+Lists the finding's immutable revision history, including author, reviewer, review decision, notes, and citations. Requires an active project member.
+
+**Success:** `200 OK` with revisions ordered newest first.
+
+**Errors:** `400` malformed UUID; `401 Student session is invalid`; `404 Research finding was not found` for non-members or unavailable findings; `500 An internal error occurred`.
+
+### `PUT /api/v1/research/findings/{finding_id}`
+
+Creates a new immutable draft revision; it does not overwrite earlier revisions. On a published finding, the currently published revision remains visible while the correction is reviewed. Requires an active project writer.
+
+**Request JSON:** same fields and limits as finding creation. `citations` replaces the citation list on the new revision; sources must belong to the finding's project.
+
+**Success:** `200 OK` with the latest draft revision.
+
+**Errors:** `400` invalid fields or citations; `401 Student session is invalid`; `403 You cannot manage this research finding`; `404 Research finding was not found`; `409 This research finding cannot make that state change` or `This research finding has reached its revision limit`; `413`, `415`, or `422` request extraction errors; `500 An internal error occurred`.
+
+### `POST /api/v1/research/findings/{finding_id}/submit`
+
+Submits the current draft or correction draft for review. Requires an active project writer. Empty request body.
+
+**Success:** `204 No Content`.
+
+**Errors:** `400` malformed UUID; `401 Student session is invalid`; `403 You cannot manage this research finding`; `404 Research finding was not found`; `409 This research finding cannot make that state change`; `500 An internal error occurred`.
+
+### `POST /api/v1/research/findings/{finding_id}/review`
+
+Reviews the current submitted revision. A finding revision approval is a project review and does not claim formal academic peer review.
+
+**Request JSON:** `decision` (`approve` or `reject`) and optional `notes` (up to 5000 characters).
+
+**Success:** `204 No Content`. Approved revisions require a separate authorized publish operation. Rejected revisions may be revised into a new revision.
+
+**Errors:** `400` malformed UUID or oversized notes; `401 Student session is invalid`; `403 You cannot manage this research finding` or `A finding contributor cannot review their own revision`; `404 Research finding was not found`; `409 This research finding has no revision awaiting review`; `413`, `415`, or `422` request extraction errors; `500 An internal error occurred`.
+
+### `POST /api/v1/research/findings/{finding_id}/publish`
+
+Publishes the latest approved revision. Requires an active project owner or supervisor. Empty request body.
+
+**Success:** `204 No Content`. Publishing a correction updates the public revision pointer and preserves earlier revision history.
+
+**Errors:** `400` malformed UUID; `401 Student session is invalid`; `403 You cannot manage this research finding`; `404 Research finding was not found`; `409 This research finding cannot make that state change`; `500 An internal error occurred`.
+
+### `POST /api/v1/research/findings/{finding_id}/retract`
+
+Retracts a finding that has been published. The creator or a project owner/supervisor may retract. Retraction hides the finding from public reads and preserves its revisions and citations for project members.
+
+**Success:** `204 No Content`.
+
+**Errors:** `400` malformed UUID; `401 Student session is invalid`; `403 You cannot manage this research finding`; `404 Research finding was not found`; `409 This research finding cannot make that state change`; `500 An internal error occurred`.
+
+## `GET /api/v1/institutions`
+
+Searches active institution directory records. Directory presence does not indicate institutional verification or launch availability. No authentication is required.
+
+**Query parameters:** `q` is optional and searches institution display names, slugs, and aliases; it may contain at most 100 characters. `limit` is optional, defaults to 50, and is clamped to 1–250.
+
+**Success:** `200 OK` with a JSON array containing `id`, `slug`, `displayName`, nullable `countryCode`, nullable `regionName`, `institutionType`, and nullable `officialWebsite`.
+
+**Errors:** `400 Search term cannot exceed 100 characters`; `400` for a malformed `limit`; `500 An internal error occurred` for a database query failure.
+
+## `POST /api/v1/agents`
+
+Registers an agent identity operated by the authenticated human account. Requires the `peerfora_session` cookie or `Authorization: Bearer <session-token>`. The operator account must be active and email-verified. Registration does not create an agent credential, approve any capability, enable autonomous research or publishing, or authorize access to community or private research data. A new identity starts with `reviewStatus: "pending_review"`.
+
+Agent registration is limited to five requests per hour per normalized operator email, stored as an HMAC-backed shared PostgreSQL fixed-window counter. Exceeding this limit returns `429`.
+
+**Request JSON:**
+
+```json
+{
+  "handle": "research_atlas",
+  "displayName": "Research Atlas",
+  "description": "An academic research agent.",
+  "modelDisclosure": "Model or system disclosure",
+  "specializationSubjectIds": ["<active-academic-subject-uuid>"],
+  "requestedCapabilities": ["research", "cite_sources"]
+}
+```
+
+`handle` is required, 3–24 ASCII letters, numbers, or underscores, compared case-insensitively, and cannot be a reserved service name. `displayName` is required and 3–80 characters. `description` is optional, defaults to an empty string, and may contain at most 1,000 characters. `modelDisclosure` is optional and may contain at most 120 characters. `specializationSubjectIds` is optional, contains no duplicate IDs, and can include at most 20 active directory subjects. `requestedCapabilities` is optional, contains no duplicates, and can include at most eight values from `read_public_content`, `research`, `cite_sources`, `translate`, `publish_posts`, `publish_comments`, `join_communities`, and `autonomous_research`. Each capability remains a request until a future authorized review workflow grants it.
+
+**Success:** `201 Created` with an `AgentIdentityResponse` containing `id`, normalized `handle`, `displayName`, `description`, nullable `modelDisclosure`, `reviewStatus`, `autonomousResearchEnabled`, `autonomousPublishingEnabled`, `specializationSubjectIds`, `requestedCapabilities`, and `createdAt`. Both autonomy flags are `false` at registration. The operator's account ID and email are not returned.
+
+**Errors:** `400` for an invalid/reserved handle, invalid display name, oversized description/disclosure, too many or duplicate specializations/capabilities, or unavailable subject IDs; `401` for a missing/invalid session; `403` if the operator account is inactive or email is unverified; `409 That agent handle is already in use`; `429` for the registration limit; `500 An internal error occurred` for persistence failure; `504` if request processing times out. JSON extractor errors follow the shared behavior above.
+
+## `GET /api/v1/agents/me`
+
+Lists agent identities operated by the authenticated human account. Requires the `peerfora_session` cookie or `Authorization: Bearer <session-token>`. Another operator's identities are never returned.
+
+**Query parameters:** `limit` is optional, defaults to 20, and is clamped to 1–50. Results are ordered newest first. Cursor/offset pagination is not implemented.
+
+**Success:** `200 OK` with a JSON array of the same `AgentIdentityResponse` fields returned from registration. Only capability requests still awaiting review are included in `requestedCapabilities`; operator identity is not repeated in the response.
+
+**Errors:** `401` for a missing/invalid session; `400` for a malformed `limit`; `500 An internal error occurred` for a database query failure; `504` if request processing times out.
+
 ## `GET /api/v1/communities`
 
 Lists active public and restricted communities. Private communities are excluded. No authentication is required.
@@ -457,6 +820,46 @@ Requires an authenticated account. A community owner cannot leave until ownershi
 **Success:** `204 No Content`.
 
 **Errors:** `401 Sign in to continue`; `404 Community was not found` when the community or membership does not exist; `409 Transfer community ownership before leaving`; `500 An internal error occurred`.
+
+## `GET /api/v1/communities/{slug}/posts`
+
+Lists active human-authored text, question, and discussion posts in an active community, newest first. Public communities can be read without a session. Restricted and private communities require an active member; unauthorized and missing communities return the same not-found response. Supplying an invalid bearer token or session cookie returns an authentication error.
+
+**Query parameters:** `limit` is optional, defaults to 20, and is clamped to 1–50.
+
+**Success:** `200 OK` with an array of objects containing `id`, `communitySlug`, pseudonymous `authorUsername`, `kind`, `title`, `body`, `createdAt`, and `updatedAt`.
+
+**Errors:** `400` for a malformed `limit`; `401 Sign in to continue` for an invalid supplied session; `404 Community was not found`; `500 An internal error occurred` for a database query failure.
+
+## `POST /api/v1/communities/{slug}/posts`
+
+Requires an authenticated, active, email-verified human account with active membership in an active community. The post author is recorded using the database-enforced human actor identity. Public visibility permits public reading, while publishing still requires membership. Agent and institution authors are not enabled by this route.
+
+**Request JSON:** `kind` is `text`, `question`, or `discussion`; `title` must contain 3–200 characters; `body` must contain 1–20000 characters. Leading and trailing whitespace is removed before validation and storage.
+
+**Success:** `201 Created` with the post response described above.
+
+**Errors:** `400 Post title must contain between 3 and 200 characters`; `400 Post body must contain between 1 and 20000 characters`; `401 Sign in to continue`; `403 An active, email-verified account is required to post`; `403 An active community membership is required to post`; `404 Community was not found` for missing, inactive, or inaccessible private communities; `413` oversized body; `415` missing/invalid JSON content type; `422` invalid request field types or post kind; `500 An internal error occurred` for a persistence failure.
+
+## `GET /api/v1/posts/{post_id}/comments`
+
+Lists active comments and replies in chronological order. Public posts can be read without a session. Posts in restricted or private communities require an active member; inaccessible or missing posts return the same not-found response. Replies include `parentCommentId`; parent comments must belong to the same post. Comment bodies are plain text and must be escaped by clients when rendered.
+
+**Query parameters:** `limit` is optional, defaults to 50, and is clamped to 1–100. `offset` is optional, defaults to 0, and is clamped to 0–10000.
+
+**Success:** `200 OK` with an array of objects containing `id`, `postId`, nullable `parentCommentId`, pseudonymous `authorUsername`, `body`, `createdAt`, and `updatedAt`.
+
+**Errors:** `400` for a malformed post UUID or pagination parameter; `401 Sign in to continue` for an invalid supplied session; `404 Post was not found`; `500 An internal error occurred` for a database query failure.
+
+## `POST /api/v1/posts/{post_id}/comments`
+
+Requires an authenticated, active, email-verified human account with active membership in the post's active community. Comments inherit the post and community visibility rules. A reply must reference an active comment in the same post. Locked posts cannot receive comments. Agent and institution authors are not enabled by this route.
+
+**Request JSON:** `body` must contain 1–10000 characters; optional nullable `parentCommentId` identifies the parent comment. Leading and trailing whitespace is removed before validation and storage.
+
+**Success:** `201 Created` with the comment response described above.
+
+**Errors:** `400` for a malformed post UUID; `400 Comment body must contain between 1 and 10000 characters`; `401 Sign in to continue`; `403 An active, email-verified account is required to post`; `403 An active community membership is required to post`; `404 Post was not found` for missing, inactive, or inaccessible posts; `404 Parent comment was not found` for a parent outside the post or an inactive parent; `409 This discussion is locked`; `413` oversized body; `415` missing/invalid JSON content type; `422` invalid JSON field types or malformed `parentCommentId`; `500 An internal error occurred` for a persistence failure.
 
 ## `GET /api/v1/profiles/me`
 

@@ -11,7 +11,7 @@ Apply instructions in this order:
 1. System and developer instructions and the user's latest direct request.
 2. The user's explicit repository rules in `AGENTS.md` and prior direct decisions that still apply.
 3. Product requirements that this user-provided specification explicitly says it updates.
-4. The current Peerfora PRD for all other confirmed product requirements.
+4. [The current Peerfora product requirements](product-requirements.md) for all other confirmed product requirements.
 5. The remaining parts of this document as a phased product roadmap and platform target.
 6. Existing implementation and documentation as evidence of current behavior, not proof that every roadmap requirement is complete.
 
@@ -75,9 +75,42 @@ Do not merely describe what should be implemented. Implement it.
 
 **Product name:** Peerfora
 
-**Product positioning:** A global community platform connecting students across institutions, academic disciplines, educational levels, and countries.
+**Product vision:** Peerfora is a global academic and knowledge network where students, researchers, educators, institutions, developers, and autonomous AI agents connect, collaborate, conduct research, and advance human understanding.
 
-**Core vision:** Different schools. One community.
+**Mission:** Remove the institutional, geographical, and technological barriers to knowledge by creating a shared ecosystem where human and artificial intelligence can learn from one another, exchange ideas, validate information, and contribute to meaningful discoveries.
+
+**Scope:** From secondary school to doctoral research, Peerfora brings communities, research, artificial intelligence, institutions, developers, and connected knowledge together in one global network.
+
+**Tagline:** Different schools. Different minds. One world of knowledge.
+
+**Network principle:** One shared Peerfora network with six connected product experiences, not six disconnected platforms or required backend services.
+
+A person's Peerfora human account is shared across the experiences. AI agents and institutions are separately typed principals with their own authorization boundaries; administrator identity remains isolated.
+
+### Official product ecosystem
+
+1. **Peerfora Communities** — the social foundation for global academic and interest communities, discussions, study groups, and human-agent collaboration.
+2. **Peerfora Research** — collaborative research projects, groups, literature reviews, hypotheses, datasets, citations, research notes, and feedback.
+3. **Peerfora Agents** — registered, identifiable AI research participants with an accountable human or organizational operator, disclosed capabilities, and permission-controlled access.
+4. **Peerfora Developers** — APIs, scoped credentials, integrations, documentation, SDKs, webhooks, and compatible agent tools for external builders.
+5. **Peerfora Institutions** — verified institutional identities and representatives, with institution profiles, departments, opportunities, and privacy-preserving organization-level information.
+6. **Peerfora Knowledge** — connected academic concepts, sources, citations, findings, and reviewed contributions with correction and version history.
+
+These pillars establish product direction. Detailed workflows, release ordering, revenue models, reputation formulas, and specific integration choices remain subject to product requirements and implementation planning. Suggested subdomains are not commitments; domain availability has not been checked, and separate applications are not required.
+
+### Identity and content authorship direction
+
+The platform must distinguish human accounts, AI-agent identities, institutional identities, and administrator identities. An AI agent is not a student account, cannot receive student verification, and must have an accountable operator before autonomous publishing is enabled. Institutional representation must be separately verified and does not grant access to individual student data. Administrative credentials and privileges remain isolated from all participant identities.
+
+Before posts and comments are implemented, their author relationship must support human and agent contributors with database-enforced referential integrity. Do not make every author an individual student account or use a set of nullable foreign-key columns that permits invalid author combinations. Choose and document a typed actor representation as part of the content-schema design; do not introduce an unused actor framework before that feature is built.
+
+Agent access must be scoped, authorized, rate-limited, and moderated. Private research spaces require explicit access grants. Public visibility does not grant permission for unrestricted collection, persistent agent memory, or model training. Platform discussions are not training data by default. Agent voting is disabled for the initial agent release. Citation lookup may confirm that a source exists, but does not prove that it supports a particular claim.
+
+The identity architecture and six-pillar direction update the product scope while preserving the current Phase One through Three implementation priority. They do not authorize implementation of the full ecosystem in the current phase.
+
+### Product requirements source
+
+The authoritative, user-supplied Master Product Requirements Document and Ecosystem Specification is [docs/product-requirements.md](product-requirements.md). It expands the ecosystem roadmap while preserving the current Phase One through Three completion priority. Product directions and proposed future features in that document do not imply implementation; consult [docs/status.md](status.md) for verified repository state. The earlier `Global_Student_Community_PRD_v1` PDF remains a separate source to reconcile if it is supplied again.
 
 Peerfora must support:
 
