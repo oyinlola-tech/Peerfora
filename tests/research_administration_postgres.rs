@@ -36,6 +36,16 @@ async fn research_administration_enforces_permissions_and_audits_private_metadat
     let (_, limited_admin_token) =
         create_administrator_session(&database, "analytics_viewer").await;
 
+    assert!(!owner.username.is_empty());
+    let student_token = send_student_request(
+        &app,
+        "GET",
+        "/api/v1/admin/research/projects",
+        &owner.session_token,
+    )
+    .await;
+    assert_eq!(student_token.status(), StatusCode::UNAUTHORIZED);
+
     let denied = send_administrator_request(
         &app,
         "GET",
@@ -155,10 +165,7 @@ async fn create_private_project(app: &axum::Router, token: &str) -> Uuid {
         .expect("project ID should be a UUID")
 }
 
-async fn create_administrator_session(
-    database: &sqlx::PgPool,
-    role_key: &str,
-) -> (Uuid, String) {
+async fn create_administrator_session(database: &sqlx::PgPool, role_key: &str) -> (Uuid, String) {
     let administrator_id = Uuid::new_v4();
     let token = peerfora_api::utils::one_time_token::create_one_time_token();
     let token_hash = peerfora_api::utils::one_time_token::hash_one_time_token(&token);
@@ -179,7 +186,11 @@ async fn create_administrator_session(
     .bind(Uuid::new_v4())
     .bind(administrator_id)
     .bind(role_key)
-    .bind(peerfora_api::constants::admin_auth::SEEDED_ROOT_ADMINISTRATOR_ID.parse::<Uuid>().expect("root ID should be valid"))
+    .bind(
+        peerfora_api::constants::admin_auth::SEEDED_ROOT_ADMINISTRATOR_ID
+            .parse::<Uuid>()
+            .expect("root ID should be valid"),
+    )
     .execute(database)
     .await
     .expect("test role should be assigned");
@@ -206,7 +217,10 @@ async fn send_administrator_request(
     let mut request = Request::builder()
         .method(method)
         .uri(path)
-        .header(header::COOKIE, format!("{ADMIN_SESSION_COOKIE_NAME}={token}"))
+        .header(
+            header::COOKIE,
+            format!("{ADMIN_SESSION_COOKIE_NAME}={token}"),
+        )
         .header(header::ORIGIN, TEST_PUBLIC_URL);
     let body = if let Some(body) = body {
         request = request.header(header::CONTENT_TYPE, "application/json");

@@ -25,6 +25,48 @@ pub async fn create_public_project(app: &axum::Router, token: &str) -> Uuid {
         .expect("project ID should be a UUID")
 }
 
+pub async fn create_public_community(app: &axum::Router, token: &str) -> String {
+    let response = send_json_request(
+        app,
+        "POST",
+        "/api/v1/communities",
+        token,
+        json!({
+            "slug": format!("research-{}", Uuid::new_v4().simple()),
+            "displayName": "Research discussion",
+            "category": "general",
+            "visibility": "public"
+        }),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::CREATED);
+    response_json(response).await["slug"]
+        .as_str()
+        .expect("community response should include a slug")
+        .to_owned()
+}
+
+pub async fn create_community_post(app: &axum::Router, community_slug: &str, token: &str) -> Uuid {
+    let response = send_json_request(
+        app,
+        "POST",
+        &format!("/api/v1/communities/{community_slug}/posts"),
+        token,
+        json!({
+            "kind": "discussion",
+            "title": "Discussion of published research",
+            "body": "This discussion references an approved public finding."
+        }),
+    )
+    .await;
+    assert_eq!(response.status(), StatusCode::CREATED);
+    response_json(response).await["id"]
+        .as_str()
+        .expect("post response should include an ID")
+        .parse()
+        .expect("post ID should be a UUID")
+}
+
 pub async fn invite_reviewer(app: &axum::Router, project_id: Uuid, owner: &str, username: &str) {
     let response = send_json_request(
         app,

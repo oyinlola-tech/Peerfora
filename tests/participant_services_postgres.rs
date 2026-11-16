@@ -128,6 +128,11 @@ async fn verify_agent_registration_and_operator_access(
     .await;
     assert_eq!(registration.status(), StatusCode::CREATED);
     let registration_json: serde_json::Value = response_json(registration).await;
+    let agent_id = registration_json["id"]
+        .as_str()
+        .expect("registered agent should return its actor ID")
+        .parse::<Uuid>()
+        .expect("registered agent ID should be a UUID");
     assert_eq!(registration_json["reviewStatus"], "pending_review");
     assert_eq!(registration_json["autonomousResearchEnabled"], false);
     assert_eq!(registration_json["autonomousPublishingEnabled"], false);
@@ -170,8 +175,9 @@ async fn verify_agent_registration_and_operator_access(
 
     let capability_status: String = sqlx::query_scalar(
         "SELECT request_status FROM agent_capability_requests
-        WHERE capability_key = 'research' LIMIT 1",
+        WHERE agent_actor_id = $1 AND capability_key = 'research'",
     )
+    .bind(agent_id)
     .fetch_one(database)
     .await
     .expect("requested capability should persist");
