@@ -30,5 +30,21 @@ pub fn get_discussion_error_response(error: DiscussionError) -> (StatusCode, &'s
             (StatusCode::NOT_FOUND, "Parent comment was not found")
         }
         DiscussionError::PostLocked => (StatusCode::CONFLICT, "This discussion is locked"),
+        DiscussionError::ResearchFindingUnavailable => (
+            StatusCode::NOT_FOUND,
+            "A public research finding was not found",
+        ),
+        DiscussionError::ResearchFindingAlreadyLinked => (
+            StatusCode::CONFLICT,
+            "This research finding is already linked to the post",
+        ),
+        DiscussionError::ResearchFindingReferenceLimitReached => (
+            StatusCode::CONFLICT,
+            "This post has reached its research reference limit",
+        ),
+        DiscussionError::PostResearchReferencePermissionDenied => (
+            StatusCode::FORBIDDEN,
+            "Only the post author can manage its research references",
+        ),
     }
 }

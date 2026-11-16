@@ -15,11 +15,14 @@ pub enum AppError {
     Community(CommunityError),
     Agent(crate::enums::agent_error::AgentError),
     Directory(DirectoryError),
+    Developer(crate::enums::developer::DeveloperError),
     Profile(crate::enums::profile_error::ProfileError),
     Research(crate::enums::research::ResearchProjectError),
     ResearchTask(crate::enums::research::ResearchTaskError),
     ResearchFinding(crate::enums::research::ResearchFindingError),
     Discussion(crate::enums::discussion::DiscussionError),
+    Moderation(crate::enums::moderation::ModerationError),
+    Knowledge(crate::enums::knowledge_error::KnowledgeError),
     DatabaseConfigurationMissing,
     DatabaseUnavailable,
     DatabaseMigrationFailed,
@@ -58,6 +61,12 @@ impl From<DirectoryError> for AppError {
     }
 }
 
+impl From<crate::enums::developer::DeveloperError> for AppError {
+    fn from(error: crate::enums::developer::DeveloperError) -> Self {
+        Self::Developer(error)
+    }
+}
+
 impl From<crate::enums::profile_error::ProfileError> for AppError {
     fn from(error: crate::enums::profile_error::ProfileError) -> Self {
         Self::Profile(error)
@@ -85,6 +94,18 @@ impl From<crate::enums::research::ResearchFindingError> for AppError {
 impl From<crate::enums::discussion::DiscussionError> for AppError {
     fn from(error: crate::enums::discussion::DiscussionError) -> Self {
         Self::Discussion(error)
+    }
+}
+
+impl From<crate::enums::moderation::ModerationError> for AppError {
+    fn from(error: crate::enums::moderation::ModerationError) -> Self {
+        Self::Moderation(error)
+    }
+}
+
+impl From<crate::enums::knowledge_error::KnowledgeError> for AppError {
+    fn from(error: crate::enums::knowledge_error::KnowledgeError) -> Self {
+        Self::Knowledge(error)
     }
 }
 
@@ -119,6 +140,9 @@ impl IntoResponse for AppError {
             Self::Directory(error) => {
                 crate::errors::directory_errors::get_directory_error_response(error)
             }
+            Self::Developer(error) => {
+                crate::errors::developer_errors::get_developer_error_response(error)
+            }
             Self::Profile(error) => {
                 crate::errors::profile_errors::get_profile_error_response(error)
             }
@@ -133,6 +157,12 @@ impl IntoResponse for AppError {
             }
             Self::Discussion(error) => {
                 crate::errors::discussion_errors::get_discussion_error_response(error)
+            }
+            Self::Moderation(error) => {
+                crate::errors::moderation_errors::get_moderation_error_response(error)
+            }
+            Self::Knowledge(error) => {
+                crate::errors::knowledge_errors::get_knowledge_error_response(error)
             }
             Self::DatabaseConfigurationMissing => (
                 StatusCode::SERVICE_UNAVAILABLE,

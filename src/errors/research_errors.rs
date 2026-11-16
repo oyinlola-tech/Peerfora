@@ -166,6 +166,18 @@ pub fn get_research_task_error_response(error: ResearchTaskError) -> (StatusCode
             StatusCode::NOT_FOUND,
             "The selected assignee is not an active project member",
         ),
+        ResearchTaskError::AgentAssigneeUnavailable => (
+            StatusCode::NOT_FOUND,
+            "The selected agent is not approved for research task assignments",
+        ),
+        ResearchTaskError::SourceReferencesInvalid => (
+            StatusCode::BAD_REQUEST,
+            "Research source references must include unique HTTPS URLs and valid metadata",
+        ),
+        ResearchTaskError::AgentResultMustBePreserved => (
+            StatusCode::BAD_REQUEST,
+            "The promoted finding statement must preserve the approved agent result",
+        ),
         ResearchTaskError::AssignmentUnavailable => (
             StatusCode::CONFLICT,
             "This research task is not assigned to you",
