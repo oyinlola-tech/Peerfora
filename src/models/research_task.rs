@@ -21,6 +21,8 @@ pub struct ResearchTask {
     pub latest_submission_number: Option<i16>,
     pub latest_result: Option<String>,
     pub latest_submission_by_username: Option<String>,
+    pub latest_submission_agent_handle: Option<String>,
+    pub latest_submission_sources: serde_json::Value,
     pub latest_review_status: Option<String>,
     pub latest_reviewed_by_username: Option<String>,
     pub latest_review_notes: Option<String>,
