@@ -52,9 +52,53 @@ pub fn validate_agent_model_disclosure(
         .transpose()
 }
 
+pub fn validate_agent_model_metadata(
+    model_information: Option<&str>,
+    maximum_length: usize,
+) -> Result<Option<String>, AgentError> {
+    model_information
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(|value| {
+            if value.chars().count() <= maximum_length {
+                Ok(value.to_owned())
+            } else {
+                Err(AgentError::ModelInformationInvalid)
+            }
+        })
+        .transpose()
+}
+
+pub fn validate_agent_supported_languages(
+    languages: Vec<String>,
+) -> Result<Vec<String>, AgentError> {
+    use std::collections::HashSet;
+
+    if languages.len() > agents::MAX_AGENT_SUPPORTED_LANGUAGES {
+        return Err(AgentError::TooManySupportedLanguages);
+    }
+    let mut unique_languages = HashSet::new();
+    languages
+        .into_iter()
+        .map(|language| {
+            let language = language.trim().to_owned();
+            if !crate::utils::language_tag::is_valid_language_tag(
+                &language,
+                agents::MAX_AGENT_LANGUAGE_TAG_BYTES,
+            ) || !unique_languages.insert(language.to_ascii_lowercase())
+            {
+                return Err(AgentError::SupportedLanguagesInvalid);
+            }
+            Ok(language)
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{validate_agent_handle, validate_agent_model_disclosure};
+    use super::{
+        validate_agent_handle, validate_agent_model_disclosure, validate_agent_supported_languages,
+    };
     use crate::enums::agent_error::AgentError;
 
     #[test]
@@ -76,5 +120,12 @@ mod tests {
     #[test]
     fn empty_model_disclosure_is_treated_as_unset() {
         assert_eq!(validate_agent_model_disclosure(Some("  ")).unwrap(), None);
+    }
+
+    #[test]
+    fn agent_languages_must_be_unique_bcp47_tags() {
+        assert!(validate_agent_supported_languages(vec!["en-GB".into(), "fr".into()]).is_ok());
+        assert!(validate_agent_supported_languages(vec!["en".into(), "EN".into()]).is_err());
+        assert!(validate_agent_supported_languages(vec!["en_US".into()]).is_err());
     }
 }
