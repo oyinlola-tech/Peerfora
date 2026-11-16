@@ -2,16 +2,26 @@ use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
 
 use crate::{
-    enums::{agent::AgentCapability, agent_error::AgentError},
+    enums::{
+        agent::{AgentCapability, AgentReviewStatus},
+        agent_error::AgentError,
+    },
     errors::app_error::AppError,
-    models::agent_identity::AgentIdentity,
+    models::agent_identity::AgentOperatorClaim,
 };
+
+pub mod public_profile;
+pub mod queries;
 
 pub struct NewAgentIdentity<'a> {
     pub handle: &'a str,
     pub display_name: &'a str,
     pub description: &'a str,
     pub model_disclosure: Option<&'a str>,
+    pub model_name: Option<&'a str>,
+    pub model_version: Option<&'a str>,
+    pub supported_languages: &'a [String],
+    pub institution_directory_id: Option<Uuid>,
     pub specialization_subject_ids: &'a [Uuid],
     pub requested_capabilities: &'a [AgentCapability],
 }
@@ -26,8 +36,17 @@ pub async fn register_agent_identity(
     ensure_operator_is_active_and_verified(&mut transaction, operator_account_id).await?;
     ensure_specializations_are_available(&mut transaction, details.specialization_subject_ids)
         .await?;
+    ensure_directory_institution_is_active(&mut transaction, details.institution_directory_id)
+        .await?;
 
-    insert_agent_actor(&mut transaction, actor_id, operator_account_id, &details).await?;
+    insert_agent_actor(
+        &mut transaction,
+        actor_id,
+        Some(operator_account_id),
+        AgentReviewStatus::PendingReview,
+        &details,
+    )
+    .await?;
     insert_agent_specializations(
         &mut transaction,
         actor_id,
@@ -40,63 +59,137 @@ pub async fn register_agent_identity(
     transaction.commit().await.map_err(|_| AppError::Internal)
 }
 
-pub async fn list_agent_identities_for_operator(
+pub async fn register_unclaimed_agent_identity(
     pool: &PgPool,
-    operator_account_id: Uuid,
-    result_limit: i64,
-) -> Result<Vec<AgentIdentity>, AppError> {
-    query_agent_identities(pool, operator_account_id, None, result_limit).await
-}
-
-pub async fn find_agent_identity_for_operator(
-    pool: &PgPool,
-    operator_account_id: Uuid,
     actor_id: Uuid,
-) -> Result<Option<AgentIdentity>, AppError> {
-    Ok(
-        query_agent_identities(pool, operator_account_id, Some(actor_id), 1)
-            .await?
-            .into_iter()
-            .next(),
+    claim_id: Uuid,
+    operator_email_hash: &str,
+    token_hash: &str,
+    claim_lifetime_minutes: i32,
+    details: NewAgentIdentity<'_>,
+) -> Result<AgentOperatorClaim, AppError> {
+    let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
+    ensure_specializations_are_available(&mut transaction, details.specialization_subject_ids)
+        .await?;
+    ensure_directory_institution_is_active(&mut transaction, details.institution_directory_id)
+        .await?;
+    insert_agent_actor(
+        &mut transaction,
+        actor_id,
+        None,
+        AgentReviewStatus::PendingClaim,
+        &details,
     )
+    .await?;
+    insert_agent_specializations(
+        &mut transaction,
+        actor_id,
+        details.specialization_subject_ids,
+    )
+    .await?;
+    insert_agent_capability_requests(&mut transaction, actor_id, details.requested_capabilities)
+        .await?;
+    let claim = sqlx::query_as::<_, AgentOperatorClaim>(
+        "INSERT INTO agent_operator_claims
+            (id, agent_actor_id, operator_email_hash, token_hash, expires_at)
+         VALUES ($1, $2, $3, $4, now() + make_interval(mins => $5::integer))
+         RETURNING agent_actor_id, expires_at",
+    )
+    .bind(claim_id)
+    .bind(actor_id)
+    .bind(operator_email_hash)
+    .bind(token_hash)
+    .bind(claim_lifetime_minutes)
+    .fetch_one(&mut *transaction)
+    .await
+    .map_err(|_| AppError::Internal)?;
+    transaction.commit().await.map_err(|_| AppError::Internal)?;
+    Ok(claim)
 }
 
-async fn query_agent_identities(
+pub async fn complete_agent_operator_claim(
     pool: &PgPool,
     operator_account_id: Uuid,
-    actor_id: Option<Uuid>,
-    result_limit: i64,
-) -> Result<Vec<AgentIdentity>, AppError> {
-    sqlx::query_as::<_, AgentIdentity>(
-        "SELECT agent.actor_id AS id, agent.handle, agent.display_name, agent.description,
-            agent.model_disclosure, agent.review_status,
-            agent.autonomous_research_enabled, agent.autonomous_publishing_enabled,
-            ARRAY(
-                SELECT specialization.subject_id
-                FROM agent_specializations specialization
-                WHERE specialization.agent_actor_id = agent.actor_id
-                ORDER BY specialization.subject_id
-            ) AS specialization_subject_ids,
-            ARRAY(
-                SELECT capability.capability_key
-                FROM agent_capability_requests capability
-                WHERE capability.agent_actor_id = agent.actor_id
-                    AND capability.request_status = 'requested'
-                ORDER BY capability.capability_key
-            ) AS requested_capabilities,
-            agent.created_at
-        FROM agent_actor_identities agent
-        WHERE agent.operator_account_id = $1
-            AND ($2::uuid IS NULL OR agent.actor_id = $2)
-        ORDER BY agent.created_at DESC, agent.actor_id
-        LIMIT $3",
+    operator_email_hash: &str,
+    token_hash: &str,
+) -> Result<Uuid, AppError> {
+    let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
+    ensure_operator_is_active_and_verified(&mut transaction, operator_account_id).await?;
+    let claim = sqlx::query_as::<_, (Uuid, String, String)>(
+        "SELECT claim.agent_actor_id, claim.operator_email_hash, agent.review_status
+         FROM agent_operator_claims claim
+         JOIN agent_actor_identities agent ON agent.actor_id = claim.agent_actor_id
+         WHERE claim.token_hash = $1 AND claim.expires_at > now()
+             AND claim.consumed_at IS NULL AND claim.revoked_at IS NULL
+         FOR UPDATE OF claim, agent",
     )
-    .bind(operator_account_id)
-    .bind(actor_id)
-    .bind(result_limit)
-    .fetch_all(pool)
+    .bind(token_hash)
+    .fetch_optional(&mut *transaction)
     .await
-    .map_err(|_| AppError::Internal)
+    .map_err(|_| AppError::Internal)?
+    .ok_or(AgentError::AgentClaimInvalid)?;
+    if claim.1 != operator_email_hash {
+        return Err(AgentError::AgentClaimAccountMismatch.into());
+    }
+    let review_status =
+        AgentReviewStatus::from_database_value(&claim.2).ok_or(AppError::Internal)?;
+    if review_status != AgentReviewStatus::PendingClaim {
+        return Err(AgentError::AgentClaimInvalid.into());
+    }
+    let updated_agent = sqlx::query(
+        "UPDATE agent_actor_identities
+         SET operator_account_id = $2, review_status = $3
+         WHERE actor_id = $1 AND review_status = $4 AND operator_account_id IS NULL",
+    )
+    .bind(claim.0)
+    .bind(operator_account_id)
+    .bind(AgentReviewStatus::PendingReview.as_database_value())
+    .bind(AgentReviewStatus::PendingClaim.as_database_value())
+    .execute(&mut *transaction)
+    .await
+    .map_err(|_| AppError::Internal)?;
+    if updated_agent.rows_affected() != 1 {
+        return Err(AgentError::AgentClaimInvalid.into());
+    }
+    let consumed_claim = sqlx::query(
+        "UPDATE agent_operator_claims SET consumed_at = now()
+         WHERE token_hash = $1 AND consumed_at IS NULL AND revoked_at IS NULL",
+    )
+    .bind(token_hash)
+    .execute(&mut *transaction)
+    .await
+    .map_err(|_| AppError::Internal)?;
+    if consumed_claim.rows_affected() != 1 {
+        return Err(AgentError::AgentClaimInvalid.into());
+    }
+    transaction.commit().await.map_err(|_| AppError::Internal)?;
+    Ok(claim.0)
+}
+
+pub async fn revoke_unclaimed_agent_registration_after_email_failure(
+    pool: &PgPool,
+    agent_actor_id: Uuid,
+) -> Result<(), AppError> {
+    let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
+    sqlx::query(
+        "UPDATE agent_operator_claims SET revoked_at = now()
+         WHERE agent_actor_id = $1 AND consumed_at IS NULL AND revoked_at IS NULL",
+    )
+    .bind(agent_actor_id)
+    .execute(&mut *transaction)
+    .await
+    .map_err(|_| AppError::Internal)?;
+    sqlx::query(
+        "UPDATE agent_actor_identities SET review_status = $2
+         WHERE actor_id = $1 AND review_status = $3 AND operator_account_id IS NULL",
+    )
+    .bind(agent_actor_id)
+    .bind(AgentReviewStatus::Revoked.as_database_value())
+    .bind(AgentReviewStatus::PendingClaim.as_database_value())
+    .execute(&mut *transaction)
+    .await
+    .map_err(|_| AppError::Internal)?;
+    transaction.commit().await.map_err(|_| AppError::Internal)
 }
 
 async fn ensure_operator_is_active_and_verified(
@@ -144,10 +237,32 @@ async fn ensure_specializations_are_available(
     }
 }
 
+async fn ensure_directory_institution_is_active(
+    transaction: &mut Transaction<'_, Postgres>,
+    institution_id: Option<Uuid>,
+) -> Result<(), AppError> {
+    let Some(institution_id) = institution_id else {
+        return Ok(());
+    };
+    let institution_is_active: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM institutions WHERE id = $1 AND is_active)",
+    )
+    .bind(institution_id)
+    .fetch_one(&mut **transaction)
+    .await
+    .map_err(|_| AppError::Internal)?;
+    if institution_is_active {
+        Ok(())
+    } else {
+        Err(AgentError::InstitutionDirectoryEntryUnavailable.into())
+    }
+}
+
 async fn insert_agent_actor(
     transaction: &mut Transaction<'_, Postgres>,
     actor_id: Uuid,
-    operator_account_id: Uuid,
+    operator_account_id: Option<Uuid>,
+    review_status: AgentReviewStatus,
     details: &NewAgentIdentity<'_>,
 ) -> Result<(), AppError> {
     sqlx::query("INSERT INTO participant_actors (id, actor_type) VALUES ($1, 'agent')")
@@ -158,8 +273,10 @@ async fn insert_agent_actor(
 
     let insert_result = sqlx::query(
         "INSERT INTO agent_actor_identities
-            (actor_id, operator_account_id, handle, display_name, description, model_disclosure)
-        VALUES ($1, $2, $3, $4, $5, $6)",
+            (actor_id, operator_account_id, handle, display_name, description,
+             model_disclosure, model_name, model_version, supported_languages,
+             institution_directory_id, review_status)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)",
     )
     .bind(actor_id)
     .bind(operator_account_id)
@@ -167,6 +284,11 @@ async fn insert_agent_actor(
     .bind(details.display_name)
     .bind(details.description)
     .bind(details.model_disclosure)
+    .bind(details.model_name)
+    .bind(details.model_version)
+    .bind(details.supported_languages)
+    .bind(details.institution_directory_id)
+    .bind(review_status.as_database_value())
     .execute(&mut **transaction)
     .await;
 

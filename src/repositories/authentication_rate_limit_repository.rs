@@ -13,11 +13,7 @@ pub async fn record_authentication_request(
     email: &str,
     hash_key: &str,
 ) -> Result<bool, sqlx::Error> {
-    let normalized_email = normalize_email_address(email);
-    let mut mac = Hmac::<Sha256>::new_from_slice(hash_key.as_bytes())
-        .map_err(|_| sqlx::Error::Protocol("invalid authentication rate-limit key".to_owned()))?;
-    mac.update(normalized_email.as_bytes());
-    let subject_hash = hex::encode(mac.finalize().into_bytes());
+    let subject_hash = hash_authentication_identifier(email, hash_key)?;
     let request_count = sqlx::query_scalar::<_, i32>(
         "WITH expired_buckets AS (
             DELETE FROM authentication_rate_limit_buckets
@@ -47,4 +43,12 @@ pub async fn record_authentication_request(
     .await?;
 
     Ok(request_count <= operation.maximum_requests())
+}
+
+pub fn hash_authentication_identifier(email: &str, hash_key: &str) -> Result<String, sqlx::Error> {
+    let normalized_email = normalize_email_address(email);
+    let mut mac = Hmac::<Sha256>::new_from_slice(hash_key.as_bytes())
+        .map_err(|_| sqlx::Error::Protocol("invalid authentication rate-limit key".to_owned()))?;
+    mac.update(normalized_email.as_bytes());
+    Ok(hex::encode(mac.finalize().into_bytes()))
 }

@@ -9,6 +9,7 @@ use crate::{
 
 const FINDING_FIELDS: &str = "SELECT finding.id, finding.project_id,
     creator.username AS created_by_username, author.username AS authored_by_username,
+    author_agent.handle AS authored_by_agent_handle,
     CASE WHEN member.actor_id IS NULL THEN 'published' ELSE finding.finding_status END
         AS finding_status,
     revision.revision_number, finding.published_revision_number,
@@ -39,9 +40,11 @@ const FINDING_FIELDS: &str = "SELECT finding.id, finding.project_id,
     JOIN human_actor_identities creator_identity
         ON creator_identity.actor_id = finding.created_by_actor_id
     JOIN accounts creator ON creator.id = creator_identity.account_id
-    JOIN human_actor_identities author_identity
+    LEFT JOIN human_actor_identities author_identity
         ON author_identity.actor_id = revision.authored_by_actor_id
-    JOIN accounts author ON author.id = author_identity.account_id";
+    LEFT JOIN accounts author ON author.id = author_identity.account_id
+    LEFT JOIN agent_actor_identities author_agent
+        ON author_agent.actor_id = revision.authored_by_actor_id";
 
 pub async fn find_research_finding(
     pool: &PgPool,
@@ -61,6 +64,24 @@ pub async fn find_research_finding(
         .await
         .map_err(|_| AppError::Internal)?
         .ok_or_else(|| ResearchFindingError::FindingNotFound.into())
+}
+
+pub async fn find_public_research_finding(
+    pool: &PgPool,
+    finding_id: Uuid,
+) -> Result<Option<ResearchFinding>, AppError> {
+    let query = format!(
+        "{FINDING_FIELDS}
+        WHERE finding.id = $1 AND finding.finding_status <> 'retracted'
+            AND project.visibility = 'public'
+            AND finding.published_revision_number IS NOT NULL"
+    );
+    query_as::<_, ResearchFinding>(&query)
+        .bind(finding_id)
+        .bind(None::<Uuid>)
+        .fetch_optional(pool)
+        .await
+        .map_err(|_| AppError::Internal)
 }
 
 pub async fn list_research_findings(
@@ -98,7 +119,8 @@ pub async fn list_research_finding_revisions(
     let revisions = query_as::<_, ResearchFindingRevision>(
         "SELECT revision.finding_id, revision.project_id, revision.revision_number,
             revision.title, revision.statement, revision.details,
-            author.username AS authored_by_username, revision.review_status,
+            author.username AS authored_by_username, author_agent.handle AS authored_by_agent_handle,
+            revision.review_status,
             reviewer.username AS reviewed_by_username, revision.reviewer_notes,
             COALESCE((
                 SELECT jsonb_agg(jsonb_build_object(
@@ -121,9 +143,11 @@ pub async fn list_research_finding_revisions(
         JOIN human_actor_identities member_identity ON member_identity.account_id = $2
         JOIN research_project_members member ON member.project_id = revision.project_id
             AND member.actor_id = member_identity.actor_id AND member.membership_status = 'active'
-        JOIN human_actor_identities author_identity
+        LEFT JOIN human_actor_identities author_identity
             ON author_identity.actor_id = revision.authored_by_actor_id
-        JOIN accounts author ON author.id = author_identity.account_id
+        LEFT JOIN accounts author ON author.id = author_identity.account_id
+        LEFT JOIN agent_actor_identities author_agent
+            ON author_agent.actor_id = revision.authored_by_actor_id
         LEFT JOIN human_actor_identities reviewer_identity
             ON reviewer_identity.actor_id = revision.reviewed_by_actor_id
         LEFT JOIN accounts reviewer ON reviewer.id = reviewer_identity.account_id

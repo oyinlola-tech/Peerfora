@@ -3,6 +3,7 @@ use uuid::Uuid;
 
 use crate::{
     constants::research::MAX_RESEARCH_FINDING_REVIEW_NOTES_LENGTH,
+    enums::participant_actor_type::ParticipantActorType,
     enums::research::{
         ResearchFindingError, ResearchFindingReviewDecision, ResearchFindingRevisionStatus,
         ResearchFindingStatus,
@@ -97,7 +98,17 @@ pub async fn review_research_finding(
     .await
     .map_err(|_| AppError::Internal)?;
     let author_actor_id = author_actor_id.ok_or(ResearchFindingError::ReviewUnavailable)?;
-    if author_actor_id == reviewer_actor_id {
+    let author_actor_type: String =
+        query_scalar("SELECT actor_type FROM participant_actors WHERE id = $1")
+            .bind(author_actor_id)
+            .fetch_one(&mut *transaction)
+            .await
+            .map_err(|_| AppError::Internal)?;
+    if author_actor_id == reviewer_actor_id
+        || (ParticipantActorType::from_database_value(&author_actor_type)
+            == Some(ParticipantActorType::Agent)
+            && finding.created_by_actor_id == reviewer_actor_id)
+    {
         return Err(ResearchFindingError::SelfReviewForbidden.into());
     }
     if notes

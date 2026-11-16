@@ -3,7 +3,8 @@ use uuid::Uuid;
 
 use crate::{
     constants::admin_auth::{
-        ADMIN_RESEARCH_PROJECT_READ_AUDIT_ACTION, ADMIN_RESEARCH_PROJECT_RESTORED_AUDIT_ACTION,
+        ADMIN_RESEARCH_PROJECT_AUDIT_TARGET_TYPE, ADMIN_RESEARCH_PROJECT_READ_AUDIT_ACTION,
+        ADMIN_RESEARCH_PROJECT_RESTORED_AUDIT_ACTION,
         ADMIN_RESEARCH_PROJECT_SUSPENDED_AUDIT_ACTION,
     },
     enums::{admin_auth_error::AdminAuthError, research::ResearchProjectStatus},
@@ -97,7 +98,7 @@ pub async fn change_research_project_status(
         AdministrativeAuditEvent {
             actor_id: administrator_id,
             action,
-            target_type: "research_project",
+            target_type: ADMIN_RESEARCH_PROJECT_AUDIT_TARGET_TYPE,
             target_id: project_id,
             result: "success",
             reason: Some(reason_code),

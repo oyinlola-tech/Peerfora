@@ -62,10 +62,12 @@ pub async fn list_research_sources(
         "SELECT source.id, source.project_id, source.source_type, source.title,
             source.doi, source.source_url, source.authors, source.publication_year,
             source.provenance, source.license, account.username AS created_by_username,
+            agent.handle AS created_by_agent_handle,
             source.created_at
         FROM research_sources source
-        JOIN human_actor_identities identity ON identity.actor_id = source.created_by_actor_id
-        JOIN accounts account ON account.id = identity.account_id
+        LEFT JOIN human_actor_identities identity ON identity.actor_id = source.created_by_actor_id
+        LEFT JOIN accounts account ON account.id = identity.account_id
+        LEFT JOIN agent_actor_identities agent ON agent.actor_id = source.created_by_actor_id
         WHERE source.project_id = $1
         ORDER BY source.created_at DESC, source.id LIMIT $2",
     )
@@ -87,10 +89,12 @@ async fn find_research_source_for_member(
         "SELECT source.id, source.project_id, source.source_type, source.title,
             source.doi, source.source_url, source.authors, source.publication_year,
             source.provenance, source.license, account.username AS created_by_username,
+            agent.handle AS created_by_agent_handle,
             source.created_at
         FROM research_sources source
-        JOIN human_actor_identities identity ON identity.actor_id = source.created_by_actor_id
-        JOIN accounts account ON account.id = identity.account_id
+        LEFT JOIN human_actor_identities identity ON identity.actor_id = source.created_by_actor_id
+        LEFT JOIN accounts account ON account.id = identity.account_id
+        LEFT JOIN agent_actor_identities agent ON agent.actor_id = source.created_by_actor_id
         JOIN research_project_members member ON member.actor_id = (
             SELECT actor_id FROM human_actor_identities WHERE account_id = $2
         ) AND member.project_id = source.project_id AND member.membership_status = 'active'

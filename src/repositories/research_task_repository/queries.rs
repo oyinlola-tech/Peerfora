@@ -15,6 +15,8 @@ const RESEARCH_TASK_FIELDS: &str =
         task.max_result_bytes, task.task_status, assignee.username AS assigned_username,
         task.assignment_accepted_at, latest.submission_number AS latest_submission_number,
         latest.result AS latest_result, submitter.username AS latest_submission_by_username,
+        submitter_agent.handle AS latest_submission_agent_handle,
+        COALESCE(latest.sources, '[]'::jsonb) AS latest_submission_sources,
         latest.review_status AS latest_review_status, reviewer.username AS latest_reviewed_by_username,
         latest.reviewer_notes AS latest_review_notes, task.created_at, task.updated_at
     FROM research_tasks task
@@ -26,13 +28,20 @@ const RESEARCH_TASK_FIELDS: &str =
     LEFT JOIN accounts assignee ON assignee.id = assignee_identity.account_id
     LEFT JOIN LATERAL (
         SELECT submission_number, submitted_by_actor_id, result, review_status,
-            reviewed_by_actor_id, reviewer_notes
-        FROM research_task_submissions
+            reviewed_by_actor_id, reviewer_notes,
+            COALESCE((SELECT jsonb_agg(jsonb_build_object(
+                'title', source.title, 'url', source.source_url, 'doi', source.doi
+            ) ORDER BY source.source_order)
+            FROM research_task_submission_sources source
+            WHERE source.submission_id = submission.id), '[]'::jsonb) AS sources
+        FROM research_task_submissions submission
         WHERE task_id = task.id ORDER BY submission_number DESC LIMIT 1
     ) latest ON TRUE
     LEFT JOIN human_actor_identities submitter_identity
         ON submitter_identity.actor_id = latest.submitted_by_actor_id
     LEFT JOIN accounts submitter ON submitter.id = submitter_identity.account_id
+    LEFT JOIN agent_actor_identities submitter_agent
+        ON submitter_agent.actor_id = latest.submitted_by_actor_id
     LEFT JOIN human_actor_identities reviewer_identity
         ON reviewer_identity.actor_id = latest.reviewed_by_actor_id
     LEFT JOIN accounts reviewer ON reviewer.id = reviewer_identity.account_id";
