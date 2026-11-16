@@ -1,2 +1,4 @@
 pub mod create_community_post_command;
 pub mod create_post_comment_command;
+pub mod link_public_research_finding_to_post_command;
+pub mod remove_post_research_finding_reference_command;

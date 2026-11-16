@@ -1,2 +1,3 @@
 pub mod list_community_posts_query;
 pub mod list_post_comments_query;
+pub mod list_post_research_finding_references_query;
