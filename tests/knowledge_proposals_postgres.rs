@@ -68,6 +68,19 @@ async fn knowledge_proposal_requires_editorial_approval_and_publication() {
             .as_array()
             .is_some_and(|items| { items.iter().any(|item| item["id"] == entry_id) })
     );
+    let detail_path = format!("/api/v1/admin/knowledge/proposals/{entry_id}");
+    let detail = request_admin(&app, "GET", &detail_path, &editor_token, None).await;
+    assert_eq!(detail.status(), StatusCode::OK);
+    let detail: Value = response_json(detail).await;
+    assert_eq!(detail["status"], "submitted");
+    assert_eq!(
+        detail["citations"][0]["title"],
+        "A synthetic learning access paper"
+    );
+    assert_eq!(
+        detail["citations"][0]["provenance"],
+        "user_submitted_unverified"
+    );
     let support_denied = request_admin(
         &app,
         "GET",
@@ -77,6 +90,9 @@ async fn knowledge_proposal_requires_editorial_approval_and_publication() {
     )
     .await;
     assert_eq!(support_denied.status(), StatusCode::FORBIDDEN);
+    let support_cannot_read_detail =
+        request_admin(&app, "GET", &detail_path, &support_token, None).await;
+    assert_eq!(support_cannot_read_detail.status(), StatusCode::FORBIDDEN);
 
     let review_path = format!("/api/v1/admin/knowledge/proposals/{entry_id}/review");
     let review = request_admin(
