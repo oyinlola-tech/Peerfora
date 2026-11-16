@@ -9,7 +9,8 @@ use crate::{
         RESEARCH_PROJECT_FINDINGS_ROUTE, RESEARCH_PROJECT_INVITATIONS_ROUTE,
         RESEARCH_PROJECT_MEMBER_ROUTE, RESEARCH_PROJECT_MEMBERSHIP_ROUTE, RESEARCH_PROJECT_ROUTE,
         RESEARCH_PROJECT_SOURCES_ROUTE, RESEARCH_PROJECTS_ROUTE, RESEARCH_TASK_ACCEPT_ROUTE,
-        RESEARCH_TASK_ASSIGN_ROUTE, RESEARCH_TASK_CANCEL_ROUTE, RESEARCH_TASK_QUEUE_ROUTE,
+        RESEARCH_TASK_ASSIGN_AGENT_ROUTE, RESEARCH_TASK_ASSIGN_ROUTE, RESEARCH_TASK_CANCEL_ROUTE,
+        RESEARCH_TASK_PROMOTE_AGENT_FINDING_ROUTE, RESEARCH_TASK_QUEUE_ROUTE,
         RESEARCH_TASK_REVIEW_ROUTE, RESEARCH_TASK_ROUTE, RESEARCH_TASK_START_ROUTE,
         RESEARCH_TASK_SUBMISSIONS_ROUTE, RESEARCH_TASKS_ROUTE,
     },
@@ -73,6 +74,16 @@ pub fn build_routes() -> Router<AppState> {
         .route(
             RESEARCH_TASK_ASSIGN_ROUTE,
             axum::routing::post(research_task_controller::assign_research_task),
+        )
+        .route(
+            RESEARCH_TASK_ASSIGN_AGENT_ROUTE,
+            axum::routing::post(research_task_controller::assign_research_task_to_agent),
+        )
+        .route(
+            RESEARCH_TASK_PROMOTE_AGENT_FINDING_ROUTE,
+            axum::routing::post(
+                research_task_controller::promote_approved_agent_task_result_to_finding,
+            ),
         )
         .route(
             RESEARCH_TASK_ACCEPT_ROUTE,
