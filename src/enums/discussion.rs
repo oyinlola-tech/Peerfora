@@ -29,4 +29,8 @@ pub enum DiscussionError {
     CommentBodyInvalid,
     ParentCommentNotFound,
     PostLocked,
+    ResearchFindingUnavailable,
+    ResearchFindingAlreadyLinked,
+    ResearchFindingReferenceLimitReached,
+    PostResearchReferencePermissionDenied,
 }
