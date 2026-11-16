@@ -78,6 +78,8 @@ After migrations, `src/database/reference_data.rs` validates and imports `data/r
 - Administrative audit records reference an administrative actor and target identifiers. A database trigger rejects ordinary `UPDATE` and `DELETE`; database owners can still alter or disable the trigger.
 - Account eligibility records store policy version, self-declared method, outcome, and time, without date of birth. Terms acceptance currently stores only a timestamp, not an approved terms/privacy version.
 
+Account and initial email-verification-token creation commit in one transaction. Verification resend locks the active unverified password account before inserting another hashed token; confirmation locks the same account, rechecks the token, and deletes all its outstanding verification tokens after success. These locks serialize with administrative suspension. Migration `202611130037` adds a separate HMAC-keyed rate-limit operation for resend requests. Delivery is synchronous and is not part of the database transaction.
+
 ## Security and data lifecycle
 
 Email and username uniqueness are case-insensitive. Account status is one of `active`, `suspended`, `pending_deletion`, or `deleted`; account lookup, social identity lookup, and session lookup require `active`. A deferred constraint prevents an account from committing without a password hash or social identity. Session expiry and one-time token cleanup have indexes. Administrative session revocation locks the account row, matching the lock used when creating password or social sessions, then deletes all existing session rows and writes the audit record in the same transaction. A new login serialized after this operation may create a new session. `updated_at` uses database triggers.

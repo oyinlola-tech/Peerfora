@@ -6,6 +6,8 @@
 
 `main.rs` calls the index entry point. The index starts the server. The server reads typed settings, connects PostgreSQL, applies migrations, installs the versioned country snapshot and validates dependent country foreign keys, wires configured adapters, and starts the listener. `/health/ready` runs a database query; `/health` remains process liveness. The app builds the router. Loaders register routes, middleware, application state, and background jobs.
 
+Account registration atomically creates an account and hashed email-verification token. Confirmation resend is a separately rate-limited account command; both resend and confirmation serialize with account suspension through the account row. Email delivery remains synchronous and is not a durable outbox workflow. The current implementation and tests are awaiting Rust/HTTP verification in this execution environment.
+
 ## Request flow
 
 `client → route → middleware → validation → controller → service → repository → model → database`

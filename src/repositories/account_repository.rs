@@ -9,16 +9,22 @@ use crate::{
     models::account::Account,
 };
 
+pub struct NewAccountRecord<'a> {
+    pub email: &'a str,
+    pub username: &'a str,
+    pub display_name: Option<&'a str>,
+    pub password_hash: &'a str,
+    pub country_code: &'a str,
+    pub age_policy_version: &'a str,
+    pub verification_token_hash: &'a str,
+}
+
 pub async fn create_account(
     pool: &PgPool,
-    email: &str,
-    username: &str,
-    display_name: Option<&str>,
-    password_hash: Option<&str>,
-    country_code: &str,
-    age_policy_version: &str,
+    input: NewAccountRecord<'_>,
 ) -> Result<Account, AppError> {
-    sqlx::query_as::<_, Account>(
+    let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
+    let account = sqlx::query_as::<_, Account>(
         "INSERT INTO accounts (
             email, username, display_name, password_hash,
             eligibility_country_code, age_policy_version, terms_accepted_at
@@ -26,15 +32,27 @@ pub async fn create_account(
         RETURNING id, email, username, display_name,
             password_hash, email_verified_at",
     )
-    .bind(email)
-    .bind(username)
-    .bind(display_name)
-    .bind(password_hash)
-    .bind(country_code)
-    .bind(age_policy_version)
-    .fetch_one(pool)
+    .bind(input.email)
+    .bind(input.username)
+    .bind(input.display_name)
+    .bind(input.password_hash)
+    .bind(input.country_code)
+    .bind(input.age_policy_version)
+    .fetch_one(&mut *transaction)
     .await
-    .map_err(map_database_error)
+    .map_err(map_database_error)?;
+    sqlx::query(
+        "INSERT INTO email_verification_tokens (account_id, token_hash, expires_at)
+         VALUES ($1, $2, $3)",
+    )
+    .bind(account.id)
+    .bind(input.verification_token_hash)
+    .bind(Utc::now() + Duration::hours(EMAIL_VERIFICATION_LIFETIME_HOURS))
+    .execute(&mut *transaction)
+    .await
+    .map_err(|_| AppError::Internal)?;
+    transaction.commit().await.map_err(|_| AppError::Internal)?;
+    Ok(account)
 }
 
 pub async fn find_account_by_email(
@@ -52,38 +70,71 @@ pub async fn find_account_by_email(
     .map_err(|_| AppError::Internal)
 }
 
-pub async fn create_email_verification_token(
+pub async fn create_email_verification_token_for_unverified_account(
     pool: &PgPool,
-    account_id: Uuid,
+    email: &str,
     token_hash: &str,
-) -> Result<(), AppError> {
+) -> Result<Option<String>, AppError> {
+    let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
+    let account = sqlx::query_as::<_, (Uuid, String)>(
+        "SELECT id, email FROM accounts
+         WHERE lower(email) = lower($1) AND account_status = 'active'
+             AND email_verified_at IS NULL AND password_hash IS NOT NULL
+         FOR UPDATE",
+    )
+    .bind(email)
+    .fetch_optional(&mut *transaction)
+    .await
+    .map_err(|_| AppError::Internal)?;
+    let Some((account_id, account_email)) = account else {
+        return Ok(None);
+    };
     sqlx::query(
-        "INSERT INTO email_verification_tokens (
-            account_id, token_hash, expires_at
-        ) VALUES ($1, $2, $3)",
+        "INSERT INTO email_verification_tokens (account_id, token_hash, expires_at)
+         VALUES ($1, $2, $3)",
     )
     .bind(account_id)
     .bind(token_hash)
     .bind(Utc::now() + Duration::hours(EMAIL_VERIFICATION_LIFETIME_HOURS))
-    .execute(pool)
+    .execute(&mut *transaction)
     .await
     .map_err(|_| AppError::Internal)?;
-    Ok(())
+    transaction.commit().await.map_err(|_| AppError::Internal)?;
+    Ok(Some(account_email))
 }
 
 pub async fn verify_account_email(pool: &PgPool, token_hash: &str) -> Result<(), AppError> {
     let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
     let account_id = sqlx::query_scalar::<_, Uuid>(
-        "DELETE FROM email_verification_tokens
-        WHERE token_hash = $1 AND expires_at > now()
-        RETURNING account_id",
+        "SELECT account.id FROM accounts account
+         JOIN email_verification_tokens token ON token.account_id = account.id
+         WHERE token.token_hash = $1 AND token.expires_at > now()
+             AND account.account_status = 'active' AND account.email_verified_at IS NULL
+         FOR UPDATE OF account",
     )
     .bind(token_hash)
     .fetch_optional(&mut *transaction)
     .await
     .map_err(|_| AppError::Internal)?
     .ok_or(AccountAuthError::EmailConfirmationInvalid)?;
+    let valid_token = sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS (SELECT 1 FROM email_verification_tokens
+         WHERE account_id = $1 AND token_hash = $2 AND expires_at > now())",
+    )
+    .bind(account_id)
+    .bind(token_hash)
+    .fetch_one(&mut *transaction)
+    .await
+    .map_err(|_| AppError::Internal)?;
+    if !valid_token {
+        return Err(AccountAuthError::EmailConfirmationInvalid.into());
+    }
     sqlx::query("UPDATE accounts SET email_verified_at = now() WHERE id = $1")
+        .bind(account_id)
+        .execute(&mut *transaction)
+        .await
+        .map_err(|_| AppError::Internal)?;
+    sqlx::query("DELETE FROM email_verification_tokens WHERE account_id = $1")
         .bind(account_id)
         .execute(&mut *transaction)
         .await

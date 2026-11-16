@@ -27,6 +27,7 @@ pub const ONE_TIME_TOKEN_QUERY_PARAMETER: &str = "token";
 pub const REGISTER_ACCOUNT_ROUTE: &str = "/api/v1/auth/register";
 pub const LOGIN_ACCOUNT_ROUTE: &str = "/api/v1/auth/login";
 pub const VERIFY_EMAIL_ROUTE: &str = "/api/v1/auth/verify-email";
+pub const REQUEST_EMAIL_VERIFICATION_ROUTE: &str = "/api/v1/auth/verify-email/request";
 pub const REQUEST_PASSWORD_RESET_ROUTE: &str = "/api/v1/auth/password-reset/request";
 pub const CONFIRM_PASSWORD_RESET_ROUTE: &str = "/api/v1/auth/password-reset/confirm";
 pub const CURRENT_ACCOUNT_ROUTE: &str = "/api/v1/auth/me";
@@ -43,6 +44,8 @@ pub const SOCIAL_SIGNUP_COOKIE_PATH: &str = COMPLETE_SOCIAL_SIGNUP_ROUTE;
 pub const EMAIL_VERIFICATION_SUBJECT: &str = "Confirm your Peerfora email";
 pub const PASSWORD_RESET_SUBJECT: &str = "Reset your Peerfora password";
 pub const REGISTRATION_SUBMITTED_MESSAGE: &str = "Check your email to confirm your account";
+pub const EMAIL_VERIFICATION_REQUESTED_MESSAGE: &str =
+    "If the account needs confirmation, verification instructions will be sent";
 pub const EMAIL_CONFIRMED_MESSAGE: &str = "Email confirmed. You can now sign in.";
 pub const PASSWORD_RESET_REQUESTED_MESSAGE: &str =
     "If the account exists, password reset instructions have been sent";

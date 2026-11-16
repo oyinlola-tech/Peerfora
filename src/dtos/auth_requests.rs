@@ -19,6 +19,11 @@ pub struct LoginAccountRequest {
 }
 
 #[derive(Deserialize)]
+pub struct RequestEmailVerificationRequest {
+    pub email: String,
+}
+
+#[derive(Deserialize)]
 pub struct RequestPasswordResetRequest {
     pub email: String,
 }

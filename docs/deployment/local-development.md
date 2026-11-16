@@ -1,5 +1,5 @@
 # Local development
 
-The current API development path is `docker compose up -d postgres`, `cp .env.example .env`, then `cargo run`. Optional service profiles are `cache`, `search`, `object-storage`, and `email`; start only the ones a feature needs. Use `just --list` to see repository commands.
+The current API development path is `docker compose up -d postgres`, `cp .env.example .env`, set `PEERFORA_AUTH_RATE_LIMIT_HASH_KEY` to a stable secret of at least 32 bytes, then `cargo run`. The example PostgreSQL credentials are local-only. Leave all three OAuth settings for each unused provider blank. Optional service profiles are `cache`, `search`, `object-storage`, and `email`; start only the ones a feature needs. Use `just --list` to see repository commands.
 
 Platform setup is separate: web requires the WASM target, cargo-leptos, Node, and pnpm; Android requires JDK and Android SDK; iOS requires macOS, Xcode, and XcodeGen; Tauri desktop requires native WebView build packages for the target OS. The repository does not install global tools automatically.

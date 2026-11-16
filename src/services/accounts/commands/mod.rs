@@ -5,6 +5,7 @@ pub mod finish_social_sign_in_command;
 pub mod login_account_command;
 pub mod register_account_command;
 pub mod reinstate_account_command;
+pub mod request_email_verification_command;
 pub mod request_password_reset_command;
 pub mod reset_account_password_command;
 pub mod send_account_email_command;
