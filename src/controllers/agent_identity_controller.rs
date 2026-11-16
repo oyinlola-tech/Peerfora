@@ -1,7 +1,11 @@
 use crate::{
     constants::account_auth::SESSION_COOKIE_NAME,
     controllers::auth_cookie,
-    dtos::agent_identity::{AgentIdentityResponse, ListMyAgentsQuery, RegisterAgentRequest},
+    dtos::agent_identity::{
+        AgentClaimCompletedResponse, AgentClaimInitiatedResponse, AgentIdentityResponse,
+        CompleteAgentOperatorClaimRequest, InitiateAgentRegistrationRequest, ListMyAgentsQuery,
+        PublicAgentProfileResponse, RegisterAgentRequest,
+    },
     enums::account_auth_error::AccountAuthError,
     errors::app_error::AppError,
     models::app_state::AppState,
@@ -9,7 +13,11 @@ use crate::{
         accounts::queries::account_session_queries,
         agents::{
             commands::register_agent_command::{self, AgentRegistrationDetails},
-            queries::list_my_agents_query,
+            commands::{
+                complete_agent_operator_claim_command,
+                initiate_agent_registration_command::{self, InitiateAgentRegistration},
+            },
+            queries::{find_public_agent_profile_query, list_my_agents_query},
         },
     },
 };
@@ -40,6 +48,10 @@ pub async fn register_agent(
             display_name: request.display_name,
             description: request.description,
             model_disclosure: request.model_disclosure,
+            model_name: request.model_name,
+            model_version: request.model_version,
+            supported_languages: request.supported_languages,
+            institution_directory_id: request.institution_directory_id,
             specialization_subject_ids: request.specialization_subject_ids,
             requested_capabilities: request.requested_capabilities,
         },
@@ -52,6 +64,69 @@ pub async fn register_agent(
     ))
 }
 
+pub async fn initiate_agent_registration(
+    State(state): State<AppState>,
+    Json(request): Json<InitiateAgentRegistrationRequest>,
+) -> Result<(StatusCode, Json<AgentClaimInitiatedResponse>), AppError> {
+    crate::services::access_control::commands::enforce_authentication_rate_limit_command::enforce_authentication_rate_limit(
+        &state.database,
+        crate::enums::authentication_rate_limit_operation::AuthenticationRateLimitOperation::AgentRegistration,
+        &request.operator_email,
+        &state.authentication_rate_limit_hash_key,
+    )
+    .await?;
+    let claim = initiate_agent_registration_command::initiate_agent_registration(
+        InitiateAgentRegistration {
+            pool: &state.database,
+            operator_email: &request.operator_email,
+            details: AgentRegistrationDetails {
+                handle: request.handle,
+                display_name: request.display_name,
+                description: request.description,
+                model_disclosure: request.model_disclosure,
+                model_name: request.model_name,
+                model_version: request.model_version,
+                supported_languages: request.supported_languages,
+                institution_directory_id: request.institution_directory_id,
+                specialization_subject_ids: request.specialization_subject_ids,
+                requested_capabilities: request.requested_capabilities,
+            },
+            authentication_rate_limit_hash_key: &state.authentication_rate_limit_hash_key,
+            public_url: &state.public_url,
+            email_sender: state.email_sender.as_deref(),
+        },
+    )
+    .await?;
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(AgentClaimInitiatedResponse {
+            agent_id: claim.agent_actor_id,
+            review_status: crate::enums::agent::AgentReviewStatus::PendingClaim,
+            claim_expires_at: claim.expires_at,
+        }),
+    ))
+}
+
+pub async fn complete_agent_operator_claim(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(request): Json<CompleteAgentOperatorClaimRequest>,
+) -> Result<Json<AgentClaimCompletedResponse>, AppError> {
+    let operator_account = find_operator_account(&state, &headers).await?;
+    let agent_id = complete_agent_operator_claim_command::complete_agent_operator_claim(
+        &state.database,
+        operator_account.id,
+        &operator_account.email,
+        &request.token,
+        &state.authentication_rate_limit_hash_key,
+    )
+    .await?;
+    Ok(Json(AgentClaimCompletedResponse {
+        agent_id,
+        review_status: crate::enums::agent::AgentReviewStatus::PendingReview,
+    }))
+}
+
 pub async fn list_my_agents(
     State(state): State<AppState>,
     headers: HeaderMap,
@@ -62,6 +137,16 @@ pub async fn list_my_agents(
         list_my_agents_query::list_my_agents(&state.database, operator_account.id, query.limit)
             .await?;
     Ok(Json(agents))
+}
+
+pub async fn find_public_agent_profile(
+    State(state): State<AppState>,
+    axum::extract::Path(handle): axum::extract::Path<String>,
+) -> Result<Json<PublicAgentProfileResponse>, AppError> {
+    let profile =
+        find_public_agent_profile_query::find_public_agent_profile(&state.database, &handle)
+            .await?;
+    Ok(Json(profile))
 }
 
 async fn find_operator_account(

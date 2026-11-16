@@ -8,8 +8,9 @@ use uuid::Uuid;
 use crate::{
     controllers::research_auth,
     dtos::research_task::{
-        AssignResearchTaskRequest, CreateResearchTaskRequest, ListResearchTasksQuery,
-        ResearchTaskResponse, ReviewResearchTaskResultRequest, SubmitResearchTaskResultRequest,
+        AssignResearchTaskRequest, AssignResearchTaskToAgentRequest, CreateResearchTaskRequest,
+        ListResearchTasksQuery, PromoteAgentTaskResultToFindingRequest, ResearchTaskResponse,
+        ReviewResearchTaskResultRequest, SubmitResearchTaskResultRequest,
         UpdateResearchTaskRequest,
     },
     errors::app_error::AppError,
@@ -17,7 +18,8 @@ use crate::{
     services::research::{
         commands::{
             accept_research_task_assignment_command, assign_research_task_command,
-            cancel_research_task_command, create_research_task_command,
+            assign_research_task_to_agent_command, cancel_research_task_command,
+            create_research_task_command, promote_agent_task_result_to_finding_command,
             queue_research_task_command, review_research_task_result_command,
             start_research_task_command, submit_research_task_result_command,
             update_research_task_command,
@@ -25,6 +27,7 @@ use crate::{
         queries::{find_research_task_query, list_research_tasks_query},
         research_task_details::ResearchTaskDetails,
     },
+    validations::research_finding_validation::validate_research_finding,
 };
 
 pub async fn create_research_task(
@@ -121,6 +124,57 @@ pub async fn assign_research_task(
     )
     .await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn assign_research_task_to_agent(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(task_id): Path<Uuid>,
+    Json(request): Json<AssignResearchTaskToAgentRequest>,
+) -> Result<StatusCode, AppError> {
+    let account_id = research_auth::require_authenticated_account_id(&state, &headers).await?;
+    assign_research_task_to_agent_command::assign_research_task_to_agent(
+        &state.database,
+        task_id,
+        account_id,
+        request.agent_id,
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn promote_approved_agent_task_result_to_finding(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(task_id): Path<Uuid>,
+    Json(request): Json<PromoteAgentTaskResultToFindingRequest>,
+) -> Result<
+    (
+        StatusCode,
+        Json<crate::dtos::research_finding::ResearchFindingResponse>,
+    ),
+    AppError,
+> {
+    let account_id = research_auth::require_authenticated_account_id(&state, &headers).await?;
+    let finding_details = validate_research_finding(&request.title, &request.statement, "", &[])?;
+    let finding_id = Uuid::new_v4();
+    promote_agent_task_result_to_finding_command::promote_approved_agent_task_result_to_finding(
+        &state.database,
+        task_id,
+        request.submission_number,
+        account_id,
+        finding_id,
+        &finding_details,
+    )
+    .await?;
+    let finding =
+        crate::services::research::queries::find_research_finding_query::find_research_finding(
+            &state.database,
+            finding_id,
+            Some(account_id),
+        )
+        .await?;
+    Ok((StatusCode::CREATED, Json(finding.into())))
 }
 
 pub async fn accept_research_task_assignment(

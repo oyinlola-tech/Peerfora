@@ -15,16 +15,25 @@ use crate::{
     controllers::auth_cookie,
     dtos::discussion::{
         CommunityPostResponse, CreateCommunityPostRequest, CreatePostCommentRequest,
-        ListCommunityPostsQuery, ListPostCommentsQuery, PostCommentResponse,
+        CreatePostResearchFindingReferenceRequest, ListCommunityPostsQuery, ListPostCommentsQuery,
+        PostCommentResponse,
     },
+    dtos::research_finding::ResearchFindingResponse,
     enums::account_auth_error::AccountAuthError,
     errors::app_error::AppError,
     models::app_state::AppState,
     services::{
         accounts::queries::account_session_queries,
         discussions::{
-            commands::{create_community_post_command, create_post_comment_command},
-            queries::{list_community_posts_query, list_post_comments_query},
+            commands::{
+                create_community_post_command, create_post_comment_command,
+                link_public_research_finding_to_post_command,
+                remove_post_research_finding_reference_command,
+            },
+            queries::{
+                list_community_posts_query, list_post_comments_query,
+                list_post_research_finding_references_query,
+            },
         },
     },
 };
@@ -114,6 +123,58 @@ pub async fn list_post_comments(
     .map(PostCommentResponse::from)
     .collect();
     Ok(Json(comments))
+}
+
+pub async fn link_public_research_finding_to_post(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(post_id): Path<Uuid>,
+    Json(request): Json<CreatePostResearchFindingReferenceRequest>,
+) -> Result<StatusCode, AppError> {
+    let account_id = require_account_id(&state, &headers).await?;
+    link_public_research_finding_to_post_command::link_public_research_finding_to_post(
+        &state.database,
+        post_id,
+        request.finding_id,
+        account_id,
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn list_post_research_finding_references(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(post_id): Path<Uuid>,
+) -> Result<Json<Vec<ResearchFindingResponse>>, AppError> {
+    let viewer_account_id = find_optional_account_id(&state, &headers).await?;
+    let findings =
+        list_post_research_finding_references_query::list_post_research_finding_references(
+            &state.database,
+            post_id,
+            viewer_account_id,
+        )
+        .await?
+        .into_iter()
+        .map(ResearchFindingResponse::from)
+        .collect();
+    Ok(Json(findings))
+}
+
+pub async fn remove_post_research_finding_reference(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path((post_id, finding_id)): Path<(Uuid, Uuid)>,
+) -> Result<StatusCode, AppError> {
+    let account_id = require_account_id(&state, &headers).await?;
+    remove_post_research_finding_reference_command::remove_post_research_finding_reference(
+        &state.database,
+        post_id,
+        finding_id,
+        account_id,
+    )
+    .await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn require_account_id(state: &AppState, headers: &HeaderMap) -> Result<Uuid, AppError> {
