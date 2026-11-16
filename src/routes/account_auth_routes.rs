@@ -7,8 +7,8 @@ use crate::{
     constants::account_auth::{
         COMPLETE_SOCIAL_SIGNUP_ROUTE, CONFIRM_PASSWORD_RESET_ROUTE, CURRENT_ACCOUNT_ROUTE,
         LOGIN_ACCOUNT_ROUTE, LOGOUT_ACCOUNT_ROUTE, REGISTER_ACCOUNT_ROUTE,
-        REQUEST_PASSWORD_RESET_ROUTE, SOCIAL_SIGNIN_CALLBACK_ROUTE, SOCIAL_SIGNIN_START_ROUTE,
-        VERIFY_EMAIL_ROUTE,
+        REQUEST_EMAIL_VERIFICATION_ROUTE, REQUEST_PASSWORD_RESET_ROUTE,
+        SOCIAL_SIGNIN_CALLBACK_ROUTE, SOCIAL_SIGNIN_START_ROUTE, VERIFY_EMAIL_ROUTE,
     },
     controllers::{
         account_recovery_controller, account_registration_controller, account_session_controller,
@@ -30,6 +30,10 @@ pub fn build_routes() -> Router<AppState> {
         .route(
             VERIFY_EMAIL_ROUTE,
             get(account_recovery_controller::verify_account_email),
+        )
+        .route(
+            REQUEST_EMAIL_VERIFICATION_ROUTE,
+            post(account_recovery_controller::request_email_verification),
         )
         .route(
             REQUEST_PASSWORD_RESET_ROUTE,

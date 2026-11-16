@@ -23,6 +23,7 @@ Requirements: Rust toolchain, Docker Compose, and a PostgreSQL container.
 ```sh
 docker compose up -d postgres
 cp .env.example .env
+# Set PEERFORA_AUTH_RATE_LIMIT_HASH_KEY in .env before running.
 cargo run
 ```
 
@@ -39,15 +40,13 @@ Before running the API, set `PEERFORA_AUTH_RATE_LIMIT_HASH_KEY` in `.env` to a s
 
 Optional development containers can be started with `docker compose --profile cache --profile search --profile object-storage --profile email up -d`. These profiles are not required by the current API implementation. The object-storage profile uses S3Mock and does not represent production storage.
 
-Email confirmation and password recovery need SMTP settings. Google and Apple sign-in need provider credentials and registered callback URLs. The API starts without these optional integrations, but their flows return a typed configuration error until configured. Country policies are configured with `PEERFORA_COUNTRY_POLICIES`; no country is enabled by default.
+Email confirmation and password recovery need SMTP settings. Google and Apple sign-in need provider credentials and registered callback URLs; leave all three settings for an unused provider blank. The example database password matches the local Compose service and must not be used in production. The API starts without these optional integrations, but their flows return a typed configuration error until configured. Country policies are configured with `PEERFORA_COUNTRY_POLICIES`; no country is enabled by default.
 
 ## Administrator access
 
 Administrator identities are separate from student accounts. Before using administrator APIs, configure `PEERFORA_ADMIN_MFA_ENCRYPTION_KEY` with a base64-encoded 32-byte secret from deployment secret management. For local-only development, generate one with `openssl rand -base64 32` and place it in the untracked `.env` file. Provision the first administrator once against the configured PostgreSQL database:
 
 ```sh
-PEERFORA_BOOTSTRAP_ADMIN_EMAIL=admin@example.test \
-PEERFORA_BOOTSTRAP_ADMIN_PASSWORD='use-a-long-unique-password' \
 cargo run --locked --bin provision_first_administrator
 ```
 

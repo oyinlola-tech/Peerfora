@@ -42,21 +42,21 @@ pub async fn register_account(
     let policy =
         require_account_age_eligibility(policies, &input.country_code, input.date_of_birth)?;
     let password_hash = create_password_hash(input.password).await?;
+    let verification_token = create_one_time_token();
+    let email = normalize_email_address(&input.email);
+    let username = input.username.trim().to_ascii_lowercase();
+    let verification_token_hash = hash_one_time_token(&verification_token);
     let account = account_repository::create_account(
         pool,
-        &normalize_email_address(&input.email),
-        &input.username.trim().to_ascii_lowercase(),
-        input.display_name.as_deref(),
-        Some(&password_hash),
-        &input.country_code,
-        &policy.policy_version,
-    )
-    .await?;
-    let verification_token = create_one_time_token();
-    account_repository::create_email_verification_token(
-        pool,
-        account.id,
-        &hash_one_time_token(&verification_token),
+        account_repository::NewAccountRecord {
+            email: &email,
+            username: &username,
+            display_name: input.display_name.as_deref(),
+            password_hash: &password_hash,
+            country_code: &input.country_code,
+            age_policy_version: &policy.policy_version,
+            verification_token_hash: &verification_token_hash,
+        },
     )
     .await?;
     Ok((account, verification_token))

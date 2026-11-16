@@ -13,7 +13,7 @@ This document describes every route currently registered by the API. It is based
 - Each response includes a server-generated UUID in `X-Request-Id`; caller-supplied values are replaced. Administrative audit events use this request identifier as their correlation identifier.
 - Requests that exceed `PEERFORA_REQUEST_TIMEOUT_SECONDS` return `504 Gateway Timeout` with `{"message":"Request processing timed out"}`. The default is 30 seconds; configure a positive number of seconds.
 - Cross-origin access is limited to the exact HTTP(S) origins in `PEERFORA_ALLOWED_ORIGINS`, a comma-separated setting. It defaults to the configured `PEERFORA_PUBLIC_URL` origin. Credentialed CORS permits only the registered methods, `Accept`, `Authorization`, and `Content-Type`; `X-Request-Id` is exposed to clients. Unsafe requests carrying a Peerfora session cookie must include an allowed `Origin`; any supplied disallowed or duplicate `Origin` is rejected with `403` and `{"message":"Request origin is not allowed"}`. Bearer-only non-browser clients may omit `Origin`.
-- Authentication request limits use shared PostgreSQL fixed windows keyed by operation and an HMAC of the normalized email address, with the HMAC key supplied through `PEERFORA_AUTH_RATE_LIMIT_HASH_KEY` (at least 32 bytes). Limits are five registrations per hour, ten student logins per 15 minutes, three student password-reset requests per hour, twenty administrator logins per 15 minutes, and three administrator password-reset requests per hour. Exceeding a limit returns `429` with `{"message":"Too many requests. Wait before trying again."}`. This identifier-based control applies across API instances and does not depend on campus-wide IP addresses. Other routes do not yet have rate limits. Directory/community collection endpoints use a bounded `limit` (1–50) without cursor tokens; do not use this pagination shape for future high-volume feeds, posts, or audit logs. No generic webhook routes are registered.
+- Authentication request limits use shared PostgreSQL fixed windows keyed by operation and an HMAC of the normalized email address, with the HMAC key supplied through `PEERFORA_AUTH_RATE_LIMIT_HASH_KEY` (at least 32 bytes). Limits are five account registrations and five agent registrations per hour, ten student logins per 15 minutes, three student password-reset requests per hour, three email verification requests per hour, twenty administrator logins per 15 minutes, and three administrator password-reset requests per hour. Exceeding a limit returns `429` with `{"message":"Too many requests. Wait before trying again."}`. This identifier-based control applies across API instances and does not depend on campus-wide IP addresses. Machine credentials also have separate per-credential limits; other routes may lack rate limits. Directory/community collection endpoints use a bounded `limit` (1–50) without cursor tokens; do not use this pagination shape for future high-volume feeds, posts, or audit logs. No generic webhook routes are registered.
 
 ## Authentication and cookies
 
@@ -34,6 +34,7 @@ This document describes every route currently registered by the API. It is based
 | `POST` | `/api/v1/auth/register` | Create an email/password account and send confirmation email |
 | `POST` | `/api/v1/auth/login` | Verify credentials and create a session |
 | `GET` | `/api/v1/auth/verify-email?token=...` | Confirm an email address |
+| `POST` | `/api/v1/auth/verify-email/request` | Request another confirmation email |
 | `POST` | `/api/v1/auth/password-reset/request` | Request a password reset email |
 | `POST` | `/api/v1/auth/password-reset/confirm` | Set a new password using a reset token |
 | `GET` | `/api/v1/auth/social/{provider}/start` | Start Google or Apple sign-in |
@@ -251,7 +252,15 @@ Example:
 | `503` | `Could not send the account email` | SMTP could not send the confirmation message |
 | `500` | `An internal error occurred` | Unexpected persistence or processing failure |
 
-If email delivery fails after account and verification-token creation, this implementation returns the email error while leaving the unverified account and token in the database. There is currently no resend-confirmation endpoint.
+If SMTP is not configured, registration does not create an account. If delivery fails after the account and token have committed, the unverified account remains; use the verification-request endpoint to try again. Account and initial token creation are atomic, but email delivery is synchronous and not durable.
+
+## `POST /api/v1/auth/verify-email/request`
+
+Requests another verification link for an active, unverified password account. No authentication or cookie is required. Send JSON `{"email":"student@example.edu"}`. No token is included in the response. Existing links remain valid until expiry or successful verification, at which point all links for that account are invalidated. Links expire after 24 hours.
+
+**Success:** `202 Accepted`, `{"message":"If the account needs confirmation, verification instructions will be sent"}`, including for unknown, verified, suspended, or social-only accounts and when SMTP is missing or delivery fails. Email delivery is synchronous, so response timing may still differ for eligible accounts. A successful response does not guarantee delivery.
+
+**Errors:** `400` for an invalid email address; `429` after three requests per normalized email in one hour; `413` oversized body; `415` missing/invalid JSON content type; `422` invalid or missing fields; `500` on database failure. The limiter is shared across API instances and is not a network-level abuse control.
 
 ## `POST /api/v1/auth/login`
 
@@ -302,7 +311,7 @@ Consumes a single-use email confirmation token. The confirmation link is sent by
 
 ## `POST /api/v1/auth/password-reset/request`
 
-Creates a single-use reset token valid for one hour and emails it when the account exists. The response does not reveal whether the email is registered.
+When email delivery is configured, creates a single-use reset token valid for one hour and attempts delivery for an eligible account. Response status and message do not disclose whether the email is registered, although timing may differ.
 
 **Authentication:** None.
 
@@ -314,7 +323,7 @@ Creates a single-use reset token valid for one hour and emails it when the accou
 {"message":"If the account exists, password reset instructions have been sent"}
 ```
 
-**Errors:** `400 Enter a valid email address`; `429 Too many requests. Wait before trying again.` after three requests for this email within one hour; `503 Email delivery is not configured`; `503 Could not send the account email`; `500 An internal error occurred`. Unknown addresses still receive the same `202` response and do not trigger email delivery.
+**Errors:** `400 Enter a valid email address`; `429 Too many requests. Wait before trying again.` after three requests for this email within one hour; `413`, `415`, `422`, and `500` follow shared behavior. Unknown addresses, missing SMTP configuration, and delivery failures receive the same `202` response. Delivery is synchronous and timing may still differ; success does not guarantee delivery.
 
 ## `POST /api/v1/auth/password-reset/confirm`
 

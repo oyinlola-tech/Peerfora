@@ -7,12 +7,13 @@ use axum::{
 
 use crate::{
     constants::account_auth::{
-        EMAIL_CONFIRMED_MESSAGE, MAX_EMAIL_LENGTH, PASSWORD_RESET_COMPLETED_MESSAGE,
-        PASSWORD_RESET_REQUESTED_MESSAGE,
+        EMAIL_CONFIRMED_MESSAGE, EMAIL_VERIFICATION_REQUESTED_MESSAGE, MAX_EMAIL_LENGTH,
+        PASSWORD_RESET_COMPLETED_MESSAGE, PASSWORD_RESET_REQUESTED_MESSAGE,
     },
     dtos::{
         auth_requests::{
-            ConfirmPasswordResetRequest, RequestPasswordResetRequest, VerifyEmailQuery,
+            ConfirmPasswordResetRequest, RequestEmailVerificationRequest,
+            RequestPasswordResetRequest, VerifyEmailQuery,
         },
         auth_responses::MessageResponse,
     },
@@ -22,8 +23,8 @@ use crate::{
     models::app_state::AppState,
     services::access_control::commands::enforce_authentication_rate_limit_command::enforce_authentication_rate_limit,
     services::accounts::commands::{
-        request_password_reset_command, reset_account_password_command, send_account_email_command,
-        verify_account_email_command,
+        request_email_verification_command, request_password_reset_command,
+        reset_account_password_command, send_account_email_command, verify_account_email_command,
     },
     validations::account_auth_validation::validate_email_address,
 };
@@ -44,6 +45,42 @@ pub async fn verify_account_email(
     ))
 }
 
+pub async fn request_email_verification(
+    State(state): State<AppState>,
+    Json(request): Json<RequestEmailVerificationRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    if request.email.len() > MAX_EMAIL_LENGTH {
+        return Err(AccountAuthError::InvalidEmail.into());
+    }
+    validate_email_address(&request.email)?;
+    enforce_authentication_rate_limit(
+        &state.database,
+        AuthenticationRateLimitOperation::AccountEmailVerification,
+        &request.email,
+        &state.authentication_rate_limit_hash_key,
+    )
+    .await?;
+    if state.email_sender.is_some()
+        && let Some((email, token)) =
+            request_email_verification_command::request_email_verification(
+                &state.database,
+                &request.email,
+            )
+            .await?
+        && send_account_email_command::send_account_verification_email(&state, &email, &token)
+            .await
+            .is_err()
+    {
+        tracing::warn!("Account verification email delivery failed");
+    }
+    Ok((
+        StatusCode::ACCEPTED,
+        Json(MessageResponse {
+            message: EMAIL_VERIFICATION_REQUESTED_MESSAGE,
+        }),
+    ))
+}
+
 pub async fn request_password_reset(
     State(state): State<AppState>,
     Json(request): Json<RequestPasswordResetRequest>,
@@ -59,11 +96,15 @@ pub async fn request_password_reset(
         &state.authentication_rate_limit_hash_key,
     )
     .await?;
-    if let Some((email, token)) =
-        request_password_reset_command::request_password_reset(&state.database, &request.email)
-            .await?
+    if state.email_sender.is_some()
+        && let Some((email, token)) =
+            request_password_reset_command::request_password_reset(&state.database, &request.email)
+                .await?
+        && send_account_email_command::send_password_reset_email(&state, &email, &token)
+            .await
+            .is_err()
     {
-        send_account_email_command::send_password_reset_email(&state, &email, &token).await?;
+        tracing::warn!("Account password reset email delivery failed");
     }
     Ok((
         StatusCode::ACCEPTED,
