@@ -87,7 +87,8 @@ pub struct ResearchSourceResponse {
     pub publication_year: Option<i16>,
     pub provenance: String,
     pub license: Option<String>,
-    pub created_by_username: String,
+    pub created_by_username: Option<String>,
+    pub created_by_agent_handle: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -105,6 +106,7 @@ impl From<ResearchSource> for ResearchSourceResponse {
             provenance: source.provenance,
             license: source.license,
             created_by_username: source.created_by_username,
+            created_by_agent_handle: source.created_by_agent_handle,
             created_at: source.created_at,
         }
     }
@@ -116,7 +118,8 @@ pub struct ResearchFindingResponse {
     pub id: Uuid,
     pub project_id: Uuid,
     pub created_by_username: String,
-    pub authored_by_username: String,
+    pub authored_by_username: Option<String>,
+    pub authored_by_agent_handle: Option<String>,
     pub status: String,
     pub revision_number: i16,
     pub published_revision_number: Option<i16>,
@@ -135,6 +138,7 @@ impl From<ResearchFinding> for ResearchFindingResponse {
             project_id: finding.project_id,
             created_by_username: finding.created_by_username,
             authored_by_username: finding.authored_by_username,
+            authored_by_agent_handle: finding.authored_by_agent_handle,
             status: finding.finding_status,
             revision_number: finding.revision_number,
             published_revision_number: finding.published_revision_number,
@@ -157,7 +161,8 @@ pub struct ResearchFindingRevisionResponse {
     pub title: String,
     pub statement: String,
     pub details: String,
-    pub authored_by_username: String,
+    pub authored_by_username: Option<String>,
+    pub authored_by_agent_handle: Option<String>,
     pub review_status: String,
     pub reviewed_by_username: Option<String>,
     pub reviewer_notes: Option<String>,
@@ -176,6 +181,7 @@ impl From<ResearchFindingRevision> for ResearchFindingRevisionResponse {
             statement: revision.statement,
             details: revision.details,
             authored_by_username: revision.authored_by_username,
+            authored_by_agent_handle: revision.authored_by_agent_handle,
             review_status: revision.review_status,
             reviewed_by_username: revision.reviewed_by_username,
             reviewer_notes: revision.reviewer_notes,

@@ -33,6 +33,12 @@ pub struct ListPostCommentsQuery {
     pub offset: Option<i64>,
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CreatePostResearchFindingReferenceRequest {
+    pub finding_id: Uuid,
+}
+
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CommunityPostResponse {

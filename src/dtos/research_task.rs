@@ -46,6 +46,20 @@ pub struct AssignResearchTaskRequest {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct AssignResearchTaskToAgentRequest {
+    pub agent_id: Uuid,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct PromoteAgentTaskResultToFindingRequest {
+    pub submission_number: i16,
+    pub title: String,
+    pub statement: String,
+}
+
+#[derive(Deserialize)]
 pub struct SubmitResearchTaskResultRequest {
     pub result: String,
 }
@@ -82,6 +96,8 @@ pub struct ResearchTaskResponse {
     pub latest_submission_number: Option<i16>,
     pub latest_result: Option<String>,
     pub latest_submission_by_username: Option<String>,
+    pub latest_submission_agent_handle: Option<String>,
+    pub latest_submission_sources: serde_json::Value,
     pub latest_review_status: Option<String>,
     pub latest_reviewed_by_username: Option<String>,
     pub latest_review_notes: Option<String>,
@@ -109,6 +125,8 @@ impl From<ResearchTask> for ResearchTaskResponse {
             latest_submission_number: task.latest_submission_number,
             latest_result: task.latest_result,
             latest_submission_by_username: task.latest_submission_by_username,
+            latest_submission_agent_handle: task.latest_submission_agent_handle,
+            latest_submission_sources: task.latest_submission_sources,
             latest_review_status: task.latest_review_status,
             latest_reviewed_by_username: task.latest_reviewed_by_username,
             latest_review_notes: task.latest_review_notes,
