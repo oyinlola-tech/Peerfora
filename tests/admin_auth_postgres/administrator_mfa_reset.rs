@@ -1,8 +1,6 @@
 use super::support::*;
 use axum::http::StatusCode;
 
-const TARGET_ADMINISTRATOR_PASSWORD: &str = "temporary-mfa-reset-password";
-
 #[derive(sqlx::FromRow)]
 struct AdministratorMfaState {
     encrypted_secret: Option<String>,
@@ -13,7 +11,8 @@ struct AdministratorMfaState {
 }
 
 pub async fn verify_administrator_mfa_reset(context: &TestContext) {
-    let target_id = create_target_administrator(context).await;
+    let target_password = create_test_password();
+    let target_id = create_target_administrator(context, &target_password).await;
     let root_session_token = create_root_administrator_session(context).await;
     let route = peerfora_api::constants::admin_auth::ADMINISTRATOR_MFA_RESET_ROUTE
         .replace("{id}", &target_id.to_string());
@@ -49,10 +48,13 @@ pub async fn verify_administrator_mfa_reset(context: &TestContext) {
     assert_eq!(self_reset_response.status(), StatusCode::CONFLICT);
 }
 
-async fn create_target_administrator(context: &TestContext) -> uuid::Uuid {
+async fn create_target_administrator(
+    context: &TestContext,
+    target_password: &str,
+) -> uuid::Uuid {
     let target_id = uuid::Uuid::new_v4();
     let password_hash = peerfora_api::utils::password::create_password_hash(
-        TARGET_ADMINISTRATOR_PASSWORD.to_owned(),
+        target_password.to_owned(),
     )
     .await
     .expect("target administrator password hash");
@@ -150,7 +152,7 @@ async fn assert_fresh_totp_enrollment_is_required(context: &TestContext, target_
         peerfora_api::constants::admin_auth::ADMIN_AUTH_LOGIN_ROUTE,
         serde_json::json!({
             "email": format!("mfa-reset-{target_id}@example.test"),
-            "password": TARGET_ADMINISTRATOR_PASSWORD
+            "password": target_password
         }),
     )
     .await;

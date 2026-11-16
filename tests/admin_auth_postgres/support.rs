@@ -9,6 +9,7 @@ use axum::{
     http::{Request, StatusCode, header},
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
+use rand::{RngCore, rngs::OsRng};
 use peerfora_api::{
     app::build_app,
     configs::settings::Settings,
@@ -22,13 +23,13 @@ use totp_rs::{Builder, Secret};
 use tower::ServiceExt;
 
 pub(super) const ADMIN_EMAIL: &str = "phase-three@example.test";
-pub(super) const ADMIN_PASSWORD: &str = "peerfora-admin-password-for-integration";
 pub(super) const TEST_PUBLIC_URL: &str = "https://peerfora.example.test";
 
 pub(super) struct TestContext {
     pub database: PgPool,
     pub app: axum::Router,
     pub administrator_id: uuid::Uuid,
+    pub administrator_password: String,
     pub settings: Settings,
     pub sent_emails: Arc<Mutex<Vec<String>>>,
 }
@@ -48,13 +49,16 @@ pub(super) struct AccountCommunityFixture {
 impl TestContext {
     pub async fn connect_from_environment() -> Option<Self> {
         let database_url = std::env::var("PEERFORA_TEST_DATABASE_URL").ok()?;
-        let encryption_key = STANDARD.encode([9_u8; 32]);
+        let mut encryption_key_bytes = [0_u8; 32];
+        OsRng.fill_bytes(&mut encryption_key_bytes);
+        let encryption_key = STANDARD.encode(encryption_key_bytes);
+        let administrator_password = create_test_password();
         let database = connect_database(&database_url)
             .await
             .expect("the disposable PostgreSQL test database must migrate");
         assert_seeded_root_administrator_is_pending(&database).await;
         let administrator_id =
-            provision_first_administrator(&database, ADMIN_EMAIL, ADMIN_PASSWORD.to_owned())
+            provision_first_administrator(&database, ADMIN_EMAIL, administrator_password.clone())
                 .await
                 .expect("first administrator should be provisioned once");
         assert_bootstrap_cannot_be_repeated(&database).await;
@@ -72,6 +76,7 @@ impl TestContext {
             database,
             app: build_app(app_state),
             administrator_id,
+            administrator_password,
             settings,
             sent_emails,
         })
@@ -101,8 +106,7 @@ fn test_settings(database_url: String, encryption_key: String) -> Settings {
         cookie_secure: true,
         production_environment: false,
         admin_mfa_encryption_key: Some(encryption_key),
-        authentication_rate_limit_hash_key: "test-auth-rate-limit-key-must-be-long-enough"
-            .to_owned(),
+        authentication_rate_limit_hash_key: create_test_password(),
         allowed_origins: vec![
             TEST_PUBLIC_URL
                 .parse()
@@ -181,10 +185,14 @@ pub(super) async fn assert_bootstrap_cannot_be_repeated(database: &PgPool) {
     let repeated_bootstrap = provision_first_administrator(
         database,
         "second-admin@example.test",
-        "second-admin-password-long-enough".to_owned(),
+        create_test_password(),
     )
     .await;
     assert!(repeated_bootstrap.is_err());
+}
+
+pub(super) fn create_test_password() -> String {
+    peerfora_api::utils::one_time_token::create_one_time_token()
 }
 
 pub(super) async fn assert_audit_records_are_append_only(database: &PgPool) {

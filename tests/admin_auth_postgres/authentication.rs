@@ -145,7 +145,7 @@ pub async fn verify_administrator_login_and_mfa(context: &TestContext) -> Admini
     let login_response = send_json(
         app.clone(),
         "/api/v1/admin/auth/login",
-        serde_json::json!({ "email": ADMIN_EMAIL, "password": ADMIN_PASSWORD }),
+        serde_json::json!({ "email": ADMIN_EMAIL, "password": context.administrator_password }),
     )
     .await;
     assert_eq!(login_response.status(), StatusCode::OK);

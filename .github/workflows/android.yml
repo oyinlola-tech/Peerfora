@@ -1,5 +1,8 @@
 name: Android build
 
+permissions:
+  contents: read
+
 on:
   push:
     paths:
