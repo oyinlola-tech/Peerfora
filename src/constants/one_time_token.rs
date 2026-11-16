@@ -1,0 +1,1 @@
+pub const ONE_TIME_TOKEN_RANDOM_BYTE_LENGTH: usize = 32;

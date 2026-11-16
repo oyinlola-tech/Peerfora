@@ -1,0 +1,36 @@
+pub const KNOWLEDGE_PROPOSALS_ROUTE: &str = "/api/v1/knowledge/proposals";
+pub const KNOWLEDGE_ENTRIES_ROUTE: &str = "/api/v1/knowledge/entries";
+pub const KNOWLEDGE_ENTRY_ROUTE: &str = "/api/v1/knowledge/entries/{entry_id}";
+pub const ADMIN_KNOWLEDGE_PROPOSALS_ROUTE: &str = "/api/v1/admin/knowledge/proposals";
+pub const ADMIN_KNOWLEDGE_PROPOSAL_ROUTE: &str = "/api/v1/admin/knowledge/proposals/{entry_id}";
+pub const ADMIN_KNOWLEDGE_PROPOSAL_REVIEW_ROUTE: &str =
+    "/api/v1/admin/knowledge/proposals/{entry_id}/review";
+pub const ADMIN_KNOWLEDGE_ENTRY_PUBLISH_ROUTE: &str =
+    "/api/v1/admin/knowledge/entries/{entry_id}/publish";
+pub const ADMIN_KNOWLEDGE_READ_PERMISSION: &str = "knowledge.entries.read";
+pub const ADMIN_KNOWLEDGE_REVIEW_PERMISSION: &str = "knowledge.proposals.review";
+pub const ADMIN_KNOWLEDGE_PUBLISH_PERMISSION: &str = "knowledge.entries.publish";
+pub const KNOWLEDGE_DEFAULT_PAGE_SIZE: i64 = 20;
+pub const KNOWLEDGE_MAX_PAGE_SIZE: i64 = 50;
+pub const KNOWLEDGE_MAX_OFFSET: i64 = 100_000;
+pub const KNOWLEDGE_TITLE_MIN_LENGTH: usize = 3;
+pub const KNOWLEDGE_TITLE_MAX_LENGTH: usize = 180;
+pub const KNOWLEDGE_SUMMARY_MIN_LENGTH: usize = 20;
+pub const KNOWLEDGE_SUMMARY_MAX_LENGTH: usize = 3_000;
+pub const KNOWLEDGE_SEARCH_QUERY_MAX_LENGTH: usize = 100;
+pub const KNOWLEDGE_MAX_CITATIONS: usize = 30;
+pub const KNOWLEDGE_CITATION_TITLE_MAX_LENGTH: usize = 300;
+pub const KNOWLEDGE_CITATION_DOI_MAX_LENGTH: usize = 255;
+pub const KNOWLEDGE_CITATION_URL_MAX_LENGTH: usize = 2_048;
+pub const KNOWLEDGE_CITATION_AUTHOR_MAX_LENGTH: usize = 200;
+pub const KNOWLEDGE_MAX_CITATION_AUTHORS: usize = 20;
+pub const KNOWLEDGE_LICENSE_MAX_LENGTH: usize = 200;
+pub const KNOWLEDGE_MAX_RESEARCH_FINDINGS: usize = 20;
+pub const KNOWLEDGE_REVIEW_MIN_REASON_LENGTH: usize = 1;
+pub const KNOWLEDGE_REVIEW_MAX_REASON_LENGTH: usize = 1_000;
+pub const KNOWLEDGE_AUDIT_TARGET_TYPE: &str = "knowledge_entry";
+pub const KNOWLEDGE_PROPOSAL_SUBMITTED_AUDIT_ACTION: &str = "knowledge.proposal.submitted";
+pub const KNOWLEDGE_PROPOSAL_APPROVED_AUDIT_ACTION: &str = "knowledge.proposal.approved";
+pub const KNOWLEDGE_PROPOSAL_REJECTED_AUDIT_ACTION: &str = "knowledge.proposal.rejected";
+pub const KNOWLEDGE_ENTRY_PUBLISHED_AUDIT_ACTION: &str = "knowledge.entry.published";
+pub const KNOWLEDGE_CITATION_PROVENANCE: &str = "user_submitted_unverified";

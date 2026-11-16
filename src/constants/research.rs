@@ -27,6 +27,9 @@ pub const RESEARCH_TASKS_ROUTE: &str = "/api/v1/research/projects/{project_id}/t
 pub const RESEARCH_TASK_ROUTE: &str = "/api/v1/research/tasks/{task_id}";
 pub const RESEARCH_TASK_QUEUE_ROUTE: &str = "/api/v1/research/tasks/{task_id}/queue";
 pub const RESEARCH_TASK_ASSIGN_ROUTE: &str = "/api/v1/research/tasks/{task_id}/assign";
+pub const RESEARCH_TASK_ASSIGN_AGENT_ROUTE: &str = "/api/v1/research/tasks/{task_id}/assign-agent";
+pub const RESEARCH_TASK_PROMOTE_AGENT_FINDING_ROUTE: &str =
+    "/api/v1/research/tasks/{task_id}/promote-finding";
 pub const RESEARCH_TASK_ACCEPT_ROUTE: &str = "/api/v1/research/tasks/{task_id}/accept";
 pub const RESEARCH_TASK_START_ROUTE: &str = "/api/v1/research/tasks/{task_id}/start";
 pub const RESEARCH_TASK_SUBMISSIONS_ROUTE: &str = "/api/v1/research/tasks/{task_id}/submissions";
@@ -47,6 +50,9 @@ pub const MAX_RESEARCH_TASK_ITEM_LENGTH: usize = 500;
 pub const MAX_RESEARCH_TASK_TOOL_LENGTH: usize = 100;
 pub const MAX_RESEARCH_TASK_REVIEW_NOTES_BYTES: usize = 5000;
 pub const MAX_RESEARCH_TASK_SUBMISSIONS: i16 = 100;
+pub const MAX_RESEARCH_TASK_SOURCE_REFERENCES: usize = 50;
+pub const RESEARCH_AGENT_SOURCE_PROVENANCE: &str =
+    "Submitted by an approved agent; source metadata has not been independently verified.";
 
 pub const RESEARCH_PROJECT_SOURCES_ROUTE: &str = "/api/v1/research/projects/{project_id}/sources";
 pub const RESEARCH_PROJECT_FINDINGS_ROUTE: &str = "/api/v1/research/projects/{project_id}/findings";
