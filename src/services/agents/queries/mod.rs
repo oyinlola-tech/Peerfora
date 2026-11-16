@@ -1,1 +1,4 @@
+pub mod find_public_agent_profile_query;
+pub mod list_agent_credentials_query;
+pub mod list_agents_for_administrative_review_query;
 pub mod list_my_agents_query;

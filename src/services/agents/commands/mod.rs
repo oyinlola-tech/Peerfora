@@ -1,1 +1,9 @@
+pub mod administrate_agent_lifecycle_command;
+pub mod complete_agent_operator_claim_command;
+pub mod initiate_agent_registration_command;
+pub mod issue_agent_credential_command;
 pub mod register_agent_command;
+pub mod review_agent_registration_command;
+pub mod revoke_agent_credential_command;
+pub mod rotate_agent_credential_command;
+pub mod update_agent_research_quota_command;

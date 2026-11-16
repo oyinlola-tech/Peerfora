@@ -5,7 +5,7 @@ use crate::{
     constants::agents::{DEFAULT_AGENT_LIST_LIMIT, MAX_AGENT_LIST_LIMIT},
     dtos::agent_identity::AgentIdentityResponse,
     errors::app_error::AppError,
-    repositories::agent_identity_repository,
+    repositories::agent_identity_repository::queries,
 };
 
 pub async fn list_my_agents(
@@ -16,13 +16,9 @@ pub async fn list_my_agents(
     let result_limit = requested_limit
         .unwrap_or(DEFAULT_AGENT_LIST_LIMIT)
         .clamp(1, MAX_AGENT_LIST_LIMIT);
-    agent_identity_repository::list_agent_identities_for_operator(
-        pool,
-        operator_account_id,
-        result_limit,
-    )
-    .await?
-    .into_iter()
-    .map(AgentIdentityResponse::try_from)
-    .collect()
+    queries::list_agent_identities_for_operator(pool, operator_account_id, result_limit)
+        .await?
+        .into_iter()
+        .map(AgentIdentityResponse::try_from)
+        .collect()
 }
