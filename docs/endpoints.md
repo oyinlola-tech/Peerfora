@@ -300,7 +300,7 @@ Displays a neutral confirmation form. The email link includes a 64-character low
 
 ## `POST /api/v1/auth/verify-email`
 
-Consumes a valid single-use verification token. No authentication is required. Send `application/x-www-form-urlencoded` with the `token` field, as in the confirmation form. A request carrying a Peerfora session cookie must include an allowed `Origin`; any supplied disallowed origin is rejected.
+Consumes a valid single-use verification token. No authentication is required. Send `application/x-www-form-urlencoded` with the `token` field, or submit the confirmation form to the same URL with its `token` query parameter and an empty form body. If both are supplied they must match. A request carrying a Peerfora session cookie must include an allowed `Origin`; any supplied disallowed origin is rejected.
 
 **Success:** `200 OK`, `{"message":"Email confirmed. You can now sign in."}`, with `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
 

@@ -14,7 +14,7 @@ use peerfora_api::{
     configs::settings::Settings,
     database::connect_database,
     enums::account_auth_error::AccountAuthError,
-    interfaces::email_sender::EmailSender,
+    interfaces::email_sender::{EmailMessage, EmailSender},
     models::app_state::AppState,
     repositories::account_repository::{self, NewAccountRecord},
     utils::one_time_token::hash_one_time_token,
@@ -35,13 +35,15 @@ impl EmailSender for TestSender {
     async fn send_email(
         &self,
         _recipient: &str,
-        _subject: &str,
-        message: &str,
+        message: &EmailMessage,
     ) -> Result<(), AccountAuthError> {
         if self.fail.load(Ordering::SeqCst) {
             return Err(AccountAuthError::EmailDeliveryFailed);
         }
-        self.messages.lock().unwrap().push(message.to_owned());
+        self.messages
+            .lock()
+            .unwrap()
+            .push(message.plain_text.clone());
         Ok(())
     }
 }
@@ -199,6 +201,23 @@ async fn registration_recovery_and_confirmation_are_safe() {
     let verify_path = format!("/api/v1/auth/verify-email?token={token}");
     let preview = request(&app, "GET", &verify_path, json!({})).await;
     assert_eq!(preview.status(), StatusCode::OK);
+    let preview_body = to_bytes(preview.into_body(), 4096).await.unwrap();
+    let preview_html = std::str::from_utf8(&preview_body).unwrap();
+    assert!(!preview_html.contains(&token));
+    assert!(preview_html.contains("action=\"\""));
+    let conflicting = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(&verify_path)
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .body(Body::from(format!("token={}", "a".repeat(64))))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(conflicting.status(), StatusCode::BAD_REQUEST);
     let still_unverified: bool =
         sqlx::query_scalar("SELECT email_verified_at IS NULL FROM accounts WHERE email = $1")
             .bind(&email)
@@ -208,9 +227,16 @@ async fn registration_recovery_and_confirmation_are_safe() {
     assert!(still_unverified);
     let (first, second) = tokio::join!(
         submit_verification(&app, &token),
-        submit_verification(&app, &token),
+        app.clone().oneshot(
+            Request::builder()
+                .method("POST")
+                .uri(&verify_path)
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .body(Body::empty())
+                .unwrap()
+        ),
     );
-    let statuses = [first.status(), second.status()];
+    let statuses = [first.status(), second.unwrap().status()];
     assert!(statuses.contains(&StatusCode::OK) && statuses.contains(&StatusCode::BAD_REQUEST));
     let remaining: i64 = sqlx::query_scalar(
         "SELECT count(*) FROM email_verification_tokens token JOIN accounts account ON account.id = token.account_id WHERE account.email = $1",

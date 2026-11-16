@@ -18,6 +18,7 @@ chrono = { version = "0.4", features = ["serde"] }
 hex = "0.4"
 hmac = "0.12.1"
 lettre = { version = "0.11", default-features = false, features = ["builder", "smtp-transport", "tokio1-rustls-tls"] }
+minijinja = { version = "=3.1.0", default-features = false, features = ["multi_template"] }
 openidconnect = "4.1"
 rand = "0.8"
 rpassword = "7.4"

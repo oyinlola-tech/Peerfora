@@ -1,12 +1,11 @@
 use crate::{
-    constants::account_auth::{
-        ONE_TIME_TOKEN_QUERY_PARAMETER, PASSWORD_RESET_PAGE_PATH, VERIFY_EMAIL_ROUTE,
-    },
     enums::account_auth_error::AccountAuthError,
     errors::app_error::AppError,
-    integrations::email::templates::account_access_email_templates::{
-        build_email_verification_message, build_password_reset_message,
+    integrations::email::{
+        links::{EmailLink, build_email_link},
+        templates::transactional_email::{TransactionalEmail, render_email},
     },
+    interfaces::email_sender::EmailMessage,
     models::app_state::AppState,
 };
 
@@ -15,13 +14,9 @@ pub async fn send_account_verification_email(
     recipient: &str,
     token: &str,
 ) -> Result<(), AppError> {
-    let verification_link = format!(
-        "{}{path}?{ONE_TIME_TOKEN_QUERY_PARAMETER}={token}",
-        state.public_url.trim_end_matches('/'),
-        path = VERIFY_EMAIL_ROUTE
-    );
-    let message = build_email_verification_message(&verification_link);
-    send_email(state, recipient, message.subject, &message.plain_text).await
+    let link = build_email_link(&state.public_url, EmailLink::VerifyEmail, token)?;
+    let message = render_email(TransactionalEmail::VerifyEmail { link: &link }, None)?;
+    send_email(state, recipient, &message).await
 }
 
 pub async fn send_password_reset_email(
@@ -29,27 +24,21 @@ pub async fn send_password_reset_email(
     recipient: &str,
     token: &str,
 ) -> Result<(), AppError> {
-    let reset_link = format!(
-        "{}{path}?{ONE_TIME_TOKEN_QUERY_PARAMETER}={token}",
-        state.public_url.trim_end_matches('/'),
-        path = PASSWORD_RESET_PAGE_PATH
-    );
-    let message = build_password_reset_message(&reset_link);
-    send_email(state, recipient, message.subject, &message.plain_text).await
+    let link = build_email_link(&state.public_url, EmailLink::ResetPassword, token)?;
+    let message = render_email(TransactionalEmail::ResetPassword { link: &link }, None)?;
+    send_email(state, recipient, &message).await
 }
 
 async fn send_email(
     state: &AppState,
     recipient: &str,
-    subject: &str,
-    message: &str,
+    message: &EmailMessage,
 ) -> Result<(), AppError> {
-    let email_sender = state
+    state
         .email_sender
         .as_ref()
-        .ok_or(AccountAuthError::EmailDeliveryNotConfigured)?;
-    email_sender
-        .send_email(recipient, subject, message)
+        .ok_or(AccountAuthError::EmailDeliveryNotConfigured)?
+        .send_email(recipient, message)
         .await
         .map_err(AppError::from)
 }

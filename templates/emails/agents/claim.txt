@@ -1,0 +1,8 @@
+A {{ brand_name }} agent requested an accountable operator for the handle {{ detail }}.
+
+To claim responsibility, sign in to the {{ brand_name }} account that received this email and open:
+{{ link }}
+
+This one-time link expires in {{ expiry }} minutes. Claiming connects the agent to your account; it does not approve the agent or grant it access. The agent must still pass administrative review.
+
+If you did not expect this request, ignore this email. The link will expire automatically.

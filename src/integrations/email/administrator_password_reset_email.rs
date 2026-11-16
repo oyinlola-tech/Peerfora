@@ -1,6 +1,9 @@
 use crate::{
-    enums::account_auth_error::AccountAuthError,
-    integrations::email::templates::administrator_password_reset_email_template::build_administrator_password_reset_email,
+    errors::app_error::AppError,
+    integrations::email::{
+        links::{EmailLink, build_email_link},
+        templates::transactional_email::{TransactionalEmail, render_email},
+    },
     interfaces::email_sender::EmailSender,
 };
 
@@ -9,9 +12,11 @@ pub async fn send_administrator_password_reset_email(
     recipient_email: &str,
     reset_token: &str,
     public_url: &str,
-) -> Result<(), AccountAuthError> {
-    let message = build_administrator_password_reset_email(reset_token, public_url);
+) -> Result<(), AppError> {
+    let link = build_email_link(public_url, EmailLink::AdministratorReset, reset_token)?;
+    let message = render_email(TransactionalEmail::AdministratorReset { link: &link }, None)?;
     email_sender
-        .send_email(recipient_email, message.subject, &message.plain_text)
+        .send_email(recipient_email, &message)
         .await
+        .map_err(AppError::from)
 }

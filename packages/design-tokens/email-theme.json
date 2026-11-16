@@ -1,0 +1,14 @@
+{
+  "mode": "provisional",
+  "brand_name": "Peerfora",
+  "body_background": "#f4f4f4",
+  "content_surface": "#ffffff",
+  "primary_text": "#1a1a1a",
+  "secondary_text": "#404040",
+  "border": "#767676",
+  "action_background": "#1a1a1a",
+  "action_text": "#ffffff",
+  "link": "#1a1a1a",
+  "body_font": "Arial, sans-serif",
+  "content_width_px": 600
+}

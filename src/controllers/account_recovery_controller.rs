@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use axum::{
     Form, Json,
     extract::{Query, State},
@@ -8,12 +10,12 @@ use axum::{
 use crate::{
     constants::account_auth::{
         EMAIL_CONFIRMED_MESSAGE, EMAIL_VERIFICATION_REQUESTED_MESSAGE, MAX_EMAIL_LENGTH,
-        PASSWORD_RESET_COMPLETED_MESSAGE, PASSWORD_RESET_REQUESTED_MESSAGE, VERIFY_EMAIL_ROUTE,
+        PASSWORD_RESET_COMPLETED_MESSAGE, PASSWORD_RESET_REQUESTED_MESSAGE,
     },
     dtos::{
         auth_requests::{
             ConfirmPasswordResetRequest, RequestEmailVerificationRequest,
-            RequestPasswordResetRequest, VerifyEmailQuery, VerifyEmailRequest,
+            RequestPasswordResetRequest, VerifyEmailQuery,
         },
         auth_responses::MessageResponse,
     },
@@ -33,18 +35,25 @@ pub async fn show_email_verification_confirmation(
     Query(query): Query<VerifyEmailQuery>,
 ) -> Result<Html<String>, AppError> {
     validate_verification_token(&query.token)?;
-    Ok(Html(format!(
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Confirm email</title></head><body><main><h1>Confirm your email</h1><p>Confirm only if you requested this Peerfora account.</p><form method=\"post\" action=\"{VERIFY_EMAIL_ROUTE}\"><input type=\"hidden\" name=\"token\" value=\"{}\"><button type=\"submit\">Confirm email</button></form></main></body></html>",
-        query.token
-    )))
+    // Empty action submits to this URL, including its query, without interpolating it into HTML.
+    Ok(Html("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Confirm email</title></head><body><main><h1>Confirm your email</h1><p>Confirm only if you requested this Peerfora account.</p><form method=\"post\" action=\"\"><button type=\"submit\">Confirm email</button></form></main></body></html>".to_owned()))
 }
 
 pub async fn verify_account_email(
     State(state): State<AppState>,
-    Form(request): Form<VerifyEmailRequest>,
+    Query(query): Query<HashMap<String, String>>,
+    Form(request): Form<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, AppError> {
-    validate_verification_token(&request.token)?;
-    verify_account_email_command::verify_account_email(&state.database, &request.token).await?;
+    let query_token = query.get("token");
+    let form_token = request.get("token");
+    if query_token.is_some() && form_token.is_some() && query_token != form_token {
+        return Err(AccountAuthError::EmailConfirmationInvalid.into());
+    }
+    let token = query_token
+        .or(form_token)
+        .ok_or(AccountAuthError::EmailConfirmationInvalid)?;
+    validate_verification_token(token)?;
+    verify_account_email_command::verify_account_email(&state.database, token).await?;
     let mut headers = HeaderMap::new();
     headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     headers.insert("referrer-policy", HeaderValue::from_static("no-referrer"));
@@ -117,4 +126,32 @@ pub async fn confirm_password_reset(
     Ok(Json(MessageResponse {
         message: PASSWORD_RESET_COMPLETED_MESSAGE,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use axum::extract::Query;
+
+    use super::show_email_verification_confirmation;
+    use crate::dtos::auth_requests::VerifyEmailQuery;
+
+    #[tokio::test]
+    async fn confirmation_html_does_not_interpolate_query_values() {
+        let token = "a".repeat(64);
+        let html = show_email_verification_confirmation(Query(VerifyEmailQuery {
+            token: token.clone(),
+        }))
+        .await
+        .unwrap()
+        .0;
+        assert!(!html.contains(&token));
+        assert!(html.contains("action=\"\""));
+        assert!(
+            show_email_verification_confirmation(Query(VerifyEmailQuery {
+                token: "\"><script>alert(1)</script>".to_owned(),
+            }))
+            .await
+            .is_err()
+        );
+    }
 }

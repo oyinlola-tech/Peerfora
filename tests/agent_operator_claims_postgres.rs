@@ -9,8 +9,11 @@ use axum::{
     http::{Request, StatusCode, header},
 };
 use peerfora_api::{
-    app::build_app, database::connect_database, enums::account_auth_error::AccountAuthError,
-    interfaces::email_sender::EmailSender, utils::one_time_token,
+    app::build_app,
+    database::connect_database,
+    enums::account_auth_error::AccountAuthError,
+    interfaces::email_sender::{EmailMessage, EmailSender},
+    utils::one_time_token,
 };
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -30,13 +33,12 @@ impl EmailSender for RecordingEmailSender {
     async fn send_email(
         &self,
         _recipient: &str,
-        _subject: &str,
-        message: &str,
+        message: &EmailMessage,
     ) -> Result<(), AccountAuthError> {
         self.messages
             .lock()
             .expect("email message list should remain available")
-            .push(message.to_owned());
+            .push(message.plain_text.clone());
         Ok(())
     }
 }

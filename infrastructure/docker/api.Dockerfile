@@ -6,6 +6,8 @@ COPY Cargo.toml Cargo.lock ./
 COPY src ./src
 COPY migrations ./migrations
 COPY data ./data
+COPY templates ./templates
+COPY packages/design-tokens/email-theme.json ./packages/design-tokens/email-theme.json
 
 RUN cargo build --release --locked
 

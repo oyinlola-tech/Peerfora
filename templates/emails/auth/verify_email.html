@@ -1,0 +1,9 @@
+{% extends "layouts/base.html" %}
+{% block title %}Confirm your email{% endblock %}
+{% block content %}
+<h1>Confirm your email</h1><p>Hello,</p>
+<p>Please confirm your email address to finish creating your {{ brand_name }} account. Open the secure, one-time link and select Confirm email.</p>
+{% include "partials/button.html" %}
+<p>This link expires in {{ expiry }} hours. After you confirm, return to {{ brand_name }} and sign in with your email and password.</p>
+<p>If you did not start creating an account, ignore this message. Do not forward this link or share it with anyone.</p>
+{% endblock %}
