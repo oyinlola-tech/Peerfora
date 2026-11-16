@@ -1,29 +1,31 @@
-use sqlx::PgPool;
-
 use crate::{
     errors::app_error::AppError,
-    repositories::account_repository,
+    models::app_state::AppState,
+    repositories::account_password_reset_repository,
+    services::accounts::commands::send_account_email_command::send_password_reset_email,
     utils::{
         email_address::normalize_email_address,
         one_time_token::{create_one_time_token, hash_one_time_token},
     },
 };
 
-pub async fn request_password_reset(
-    pool: &PgPool,
-    email: &str,
-) -> Result<Option<(String, String)>, AppError> {
-    let normalized_email = normalize_email_address(email);
-    let Some(account) = account_repository::find_account_by_email(pool, &normalized_email).await?
-    else {
-        return Ok(None);
-    };
-    let reset_token = create_one_time_token();
-    account_repository::create_password_reset_token(
-        pool,
-        account.id,
-        &hash_one_time_token(&reset_token),
+pub async fn request_password_reset(state: &AppState, email: &str) -> Result<(), AppError> {
+    if state.email_sender.is_none() {
+        return Ok(());
+    }
+    let token = create_one_time_token();
+    let recipient = account_password_reset_repository::create_password_reset_token(
+        &state.database,
+        &normalize_email_address(email),
+        &hash_one_time_token(&token),
     )
     .await?;
-    Ok(Some((account.email, reset_token)))
+    if let Some(recipient) = recipient
+        && send_password_reset_email(state, &recipient, &token)
+            .await
+            .is_err()
+    {
+        tracing::warn!("Account password reset email delivery failed");
+    }
+    Ok(())
 }

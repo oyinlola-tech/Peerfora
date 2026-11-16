@@ -1,5 +1,6 @@
 pub mod academic_directory_repository;
 pub mod account_administration_repository;
+pub mod account_password_reset_repository;
 pub mod account_repository;
 pub mod admin_auth_repository;
 pub mod admin_role_assignment_repository;

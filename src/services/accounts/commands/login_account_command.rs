@@ -34,13 +34,19 @@ pub async fn login_account(
         verify_password_against_dummy_hash(password).await?;
         return Err(AccountAuthError::InvalidCredentials.into());
     };
-    verify_password_hash(password, password_hash).await?;
+    verify_password_hash(password, password_hash.clone()).await?;
     if account.email_verified_at.is_none() {
         return Err(AccountAuthError::EmailMustBeConfirmed.into());
     }
     let token = create_one_time_token();
     let expires_at = Utc::now() + Duration::days(SESSION_LIFETIME_DAYS);
-    account_repository::create_session(pool, account.id, &hash_one_time_token(&token), expires_at)
-        .await?;
+    account_repository::create_session(
+        pool,
+        account.id,
+        &hash_one_time_token(&token),
+        expires_at,
+        &password_hash,
+    )
+    .await?;
     Ok(AccountSession { account, token })
 }

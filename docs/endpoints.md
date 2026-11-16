@@ -33,7 +33,8 @@ This document describes every route currently registered by the API. It is based
 | `GET` | `/health/ready` | Confirm PostgreSQL can execute a readiness query |
 | `POST` | `/api/v1/auth/register` | Create an email/password account and send confirmation email |
 | `POST` | `/api/v1/auth/login` | Verify credentials and create a session |
-| `GET` | `/api/v1/auth/verify-email?token=...` | Confirm an email address |
+| `GET` | `/api/v1/auth/verify-email?token=...` | Display the email confirmation form without consuming the token |
+| `POST` | `/api/v1/auth/verify-email` | Confirm an email address after explicit form submission |
 | `POST` | `/api/v1/auth/verify-email/request` | Request another confirmation email |
 | `POST` | `/api/v1/auth/password-reset/request` | Request a password reset email |
 | `POST` | `/api/v1/auth/password-reset/confirm` | Set a new password using a reset token |
@@ -295,19 +296,15 @@ Checks the password, requires email confirmation, and creates a 30-day session.
 
 ## `GET /api/v1/auth/verify-email`
 
-Consumes a single-use email confirmation token. The confirmation link is sent by email and includes the token as a query parameter.
+Displays a neutral confirmation form. The email link includes a 64-character lowercase hexadecimal token as the required `token` query parameter. GET does not validate the token against the database or change account state; link scanners that only fetch URLs cannot confirm an account. `200 OK` returns HTML with `Cache-Control: no-store` and `Referrer-Policy: no-referrer`; malformed tokens return `400`. This replaces the former state-changing GET contract: clients that previously expected confirmation from GET must submit the form instead. Verification requires an explicit POST, though scanners capable of submitting forms may still act on a link.
 
-**Authentication:** None.
+## `POST /api/v1/auth/verify-email`
 
-**Query parameters:** `token` (string, required).
+Consumes a valid single-use verification token. No authentication is required. Send `application/x-www-form-urlencoded` with the `token` field, as in the confirmation form. A request carrying a Peerfora session cookie must include an allowed `Origin`; any supplied disallowed origin is rejected.
 
-**Success:** `200 OK`, with `Cache-Control: no-store` and `Referrer-Policy: no-referrer` headers.
+**Success:** `200 OK`, `{"message":"Email confirmed. You can now sign in."}`, with `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
 
-```json
-{"message":"Email confirmed. You can now sign in."}
-```
-
-**Errors:** `400 Verification link is invalid or expired`; `500 An internal error occurred` for unexpected failures; `400` for missing/malformed query data.
+**Errors:** `400 Verification link is invalid or expired`, including malformed, expired, replayed, suspended-account, or previously consumed tokens; `403` for a denied origin; `415` for an unsupported content type; `500` for an unexpected failure. These changes require Rust/HTTP verification in the current execution environment.
 
 ## `POST /api/v1/auth/password-reset/request`
 

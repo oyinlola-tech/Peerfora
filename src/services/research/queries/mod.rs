@@ -1,3 +1,4 @@
+pub mod find_agent_research_task_query;
 pub mod find_public_research_finding_query;
 pub mod find_research_finding_query;
 pub mod find_research_project_query;

@@ -29,7 +29,8 @@ pub fn build_routes() -> Router<AppState> {
         )
         .route(
             VERIFY_EMAIL_ROUTE,
-            get(account_recovery_controller::verify_account_email),
+            get(account_recovery_controller::show_email_verification_confirmation)
+                .post(account_recovery_controller::verify_account_email),
         )
         .route(
             REQUEST_EMAIL_VERIFICATION_ROUTE,

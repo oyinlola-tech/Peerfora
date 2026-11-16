@@ -91,6 +91,20 @@ async fn request(
         .unwrap()
 }
 
+async fn submit_verification(app: &axum::Router, token: &str) -> axum::response::Response {
+    app.clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/v1/auth/verify-email")
+                .header(header::CONTENT_TYPE, "application/x-www-form-urlencoded")
+                .body(Body::from(format!("token={token}")))
+                .unwrap(),
+        )
+        .await
+        .unwrap()
+}
+
 async fn response_body(response: axum::response::Response) -> Value {
     serde_json::from_slice(&to_bytes(response.into_body(), 4096).await.unwrap()).unwrap()
 }
@@ -183,9 +197,18 @@ async fn registration_recovery_and_confirmation_are_safe() {
     .unwrap();
     assert!(stored);
     let verify_path = format!("/api/v1/auth/verify-email?token={token}");
+    let preview = request(&app, "GET", &verify_path, json!({})).await;
+    assert_eq!(preview.status(), StatusCode::OK);
+    let still_unverified: bool =
+        sqlx::query_scalar("SELECT email_verified_at IS NULL FROM accounts WHERE email = $1")
+            .bind(&email)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+    assert!(still_unverified);
     let (first, second) = tokio::join!(
-        request(&app, "GET", &verify_path, json!({})),
-        request(&app, "GET", &verify_path, json!({})),
+        submit_verification(&app, &token),
+        submit_verification(&app, &token),
     );
     let statuses = [first.status(), second.status()];
     assert!(statuses.contains(&StatusCode::OK) && statuses.contains(&StatusCode::BAD_REQUEST));
@@ -292,7 +315,7 @@ async fn suspended_accounts_and_expired_tokens_cannot_be_verified() {
     .fetch_one(&pool)
     .await
     .unwrap();
-    let token = format!("suspended-{id}");
+    let token = format!("{id}{id}");
     sqlx::query("INSERT INTO email_verification_tokens (account_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '1 hour')")
         .bind(account_id)
         .bind(hash_one_time_token(&token))
@@ -308,9 +331,8 @@ async fn suspended_accounts_and_expired_tokens_cannot_be_verified() {
     .await;
     assert_eq!(resend.status(), StatusCode::ACCEPTED);
     assert!(sender.messages.lock().unwrap().is_empty());
-    let verify_path = format!("/api/v1/auth/verify-email?token={token}");
     assert_eq!(
-        request(&app, "GET", &verify_path, json!({})).await.status(),
+        submit_verification(&app, &token).await.status(),
         StatusCode::BAD_REQUEST
     );
     sqlx::query("UPDATE accounts SET account_status = 'active' WHERE id = $1")
@@ -321,7 +343,7 @@ async fn suspended_accounts_and_expired_tokens_cannot_be_verified() {
     sqlx::query("UPDATE email_verification_tokens SET expires_at = now() - interval '1 minute' WHERE account_id = $1")
         .bind(account_id).execute(&pool).await.unwrap();
     assert_eq!(
-        request(&app, "GET", &verify_path, json!({})).await.status(),
+        submit_verification(&app, &token).await.status(),
         StatusCode::BAD_REQUEST
     );
     let verified: Option<chrono::DateTime<chrono::Utc>> =

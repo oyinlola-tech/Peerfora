@@ -2,6 +2,8 @@ use std::{collections::HashMap, env, net::IpAddr, str::FromStr};
 
 use axum::http::{HeaderValue, Uri};
 
+use super::url_settings::{validate_oidc_callback, validate_public_url};
+
 use crate::constants::authentication_rate_limits::{
     AUTHENTICATION_RATE_LIMIT_HASH_KEY_MINIMUM_BYTES, AUTHENTICATION_RATE_LIMIT_HASH_KEY_SETTING,
 };
@@ -80,10 +82,11 @@ pub fn load_settings() -> Result<Settings, Box<dyn std::error::Error>> {
     let smtp_from = read_optional_setting("PEERFORA_SMTP_FROM");
     let public_url =
         env::var("PEERFORA_PUBLIC_URL").unwrap_or_else(|_| DEFAULT_PUBLIC_URL.to_owned());
+    validate_public_url(&public_url, production_environment)?;
     let allowed_origins = load_allowed_origins(&public_url)?;
     let request_timeout_seconds = load_request_timeout_seconds()?;
-    let google_oidc = load_oidc_provider("PEERFORA_GOOGLE", "google")?;
-    let apple_oidc = load_oidc_provider("PEERFORA_APPLE", "apple")?;
+    let google_oidc = load_oidc_provider("PEERFORA_GOOGLE", "google", production_environment)?;
+    let apple_oidc = load_oidc_provider("PEERFORA_APPLE", "apple", production_environment)?;
 
     Ok(Settings {
         host: host.parse()?,
@@ -111,12 +114,18 @@ pub fn load_settings() -> Result<Settings, Box<dyn std::error::Error>> {
 fn load_oidc_provider(
     prefix: &str,
     provider_name: &str,
+    production_environment: bool,
 ) -> Result<Option<OidcProviderSettings>, Box<dyn std::error::Error>> {
     let client_id = read_optional_setting(&format!("{prefix}_CLIENT_ID"));
     let client_secret = read_optional_setting(&format!("{prefix}_CLIENT_SECRET"));
     let callback_url = read_optional_setting(&format!("{prefix}_CALLBACK_URL"));
     match (client_id, client_secret, callback_url) {
         (Some(client_id), Some(client_secret), Some(callback_url)) => {
+            validate_oidc_callback(
+                &callback_url,
+                production_environment,
+                &format!("{prefix}_CALLBACK_URL"),
+            )?;
             Ok(Some(OidcProviderSettings {
                 client_id,
                 client_secret,

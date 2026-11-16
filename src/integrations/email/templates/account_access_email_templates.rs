@@ -9,7 +9,7 @@ pub fn build_email_verification_message(verification_link: &str) -> EmailMessage
     EmailMessage {
         subject: EMAIL_VERIFICATION_SUBJECT,
         plain_text: format!(
-            "Hello,\n\nPlease confirm your email address to finish creating your Peerfora account. Open the secure, one-time link below:\n{verification_link}\n\nThis link expires in {EMAIL_VERIFICATION_LIFETIME_HOURS} hours. After you confirm, return to Peerfora and sign in with your email and password.\n\nIf you did not start creating a Peerfora account, you can ignore this message. Do not forward this link or share it with anyone.\n\nPeerfora"
+            "Hello,\n\nPlease confirm your email address to finish creating your Peerfora account. Open the secure, one-time link below and select Confirm email:\n{verification_link}\n\nThis link expires in {EMAIL_VERIFICATION_LIFETIME_HOURS} hours. After you confirm, return to Peerfora and sign in with your email and password.\n\nIf you did not start creating a Peerfora account, you can ignore this message. Do not forward this link or share it with anyone.\n\nPeerfora"
         ),
     }
 }

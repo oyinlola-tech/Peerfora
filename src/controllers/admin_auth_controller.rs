@@ -166,7 +166,7 @@ pub async fn logout(
     headers: HeaderMap,
     Extension(identity): Extension<AdministratorSessionIdentity>,
 ) -> Result<impl IntoResponse, AppError> {
-    crate::repositories::admin_auth_repository::revoke_administrator_session(
+    revoke_administrator_session(
         &state.database,
         identity.administrator_id,
         identity.session_id,

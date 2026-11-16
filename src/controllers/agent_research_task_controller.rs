@@ -13,13 +13,12 @@ use crate::{
     },
     errors::app_error::AppError,
     models::{agent_credential::AgentCredentialIdentity, app_state::AppState},
-    repositories::research_task_repository,
     services::research::{
         commands::{
             accept_agent_research_task_command, start_agent_research_task_command,
             submit_agent_research_task_result_command,
         },
-        queries::list_agent_research_tasks_query,
+        queries::{find_agent_research_task_query, list_agent_research_tasks_query},
     },
 };
 
@@ -50,7 +49,7 @@ pub async fn find_assigned_research_task(
     Extension(identity): Extension<AgentCredentialIdentity>,
     Path(task_id): Path<Uuid>,
 ) -> Result<Json<AgentResearchTaskResponse>, AppError> {
-    let task = research_task_repository::find_assigned_research_task_for_agent(
+    let task = find_agent_research_task_query::find_assigned_research_task_for_agent(
         &state.database,
         task_id,
         identity.agent_actor_id,

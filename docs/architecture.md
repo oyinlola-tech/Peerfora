@@ -6,13 +6,17 @@
 
 `main.rs` calls the index entry point. The index starts the server. The server reads typed settings, connects PostgreSQL, applies migrations, installs the versioned country snapshot and validates dependent country foreign keys, wires configured adapters, and starts the listener. `/health/ready` runs a database query; `/health` remains process liveness. The app builds the router. Loaders register routes, middleware, application state, and background jobs.
 
-Account registration atomically creates an account and hashed email-verification token. Confirmation resend is a separately rate-limited account command; both resend and confirmation serialize with account suspension through the account row. Email delivery remains synchronous and is not a durable outbox workflow. The current implementation and tests are awaiting Rust/HTTP verification in this execution environment.
+Account registration atomically creates an account and hashed email-verification token. Confirmation resend is a separately rate-limited account command; both resend and confirmation serialize with account suspension through the account row. Email verification GET now shows a confirmation form without mutating state; a form POST consumes the token. The change and the account-first password-reset/session locking require Rust/HTTP verification. Email delivery remains synchronous and is not a durable outbox workflow.
 
 ## Request flow
 
 `client → route → middleware → validation → controller → service → repository → model → database`
 
 The route chooses an HTTP handler. Middleware handles cross-cutting request behavior. Validators check incoming data shape and syntax. Controllers handle HTTP and call a named account use case. Services enforce product rules. Repositories own SQL and transactions. Models describe persisted records. DTOs define the public request and response shape.
+
+## Transactional email status
+
+Account verification/reset, administrator invitation/reset, and agent claim use shared plaintext message builders and one SMTP sender interface. Account and administrator recovery controllers call services rather than sending mail directly. `PEERFORA_PUBLIC_URL` supplies the link origin and is validated at startup; OIDC callback URLs are also validated. Delivery remains synchronous, with no persistent delivery intent, encrypted secret payload, worker, retries, HTML rendering, shared email theme, maintained template engine, localization fallback, or preview command. The existing neutral frontend design tokens are not yet an email-theme contract. Request timing can distinguish delivery attempts. The outbox stores community events, not email secrets, and has no worker. No live provider or email-client rendering has been verified.
 
 ## Folder map
 

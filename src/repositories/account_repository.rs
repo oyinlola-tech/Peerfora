@@ -3,9 +3,8 @@ use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::{
-    constants::account_auth::{EMAIL_VERIFICATION_LIFETIME_HOURS, PASSWORD_RESET_LIFETIME_HOURS},
-    enums::account_auth_error::AccountAuthError,
-    errors::app_error::AppError,
+    constants::account_auth::EMAIL_VERIFICATION_LIFETIME_HOURS,
+    enums::account_auth_error::AccountAuthError, errors::app_error::AppError,
     models::account::Account,
 };
 
@@ -147,11 +146,13 @@ pub async fn create_session(
     account_id: Uuid,
     token_hash: &str,
     expires_at: DateTime<Utc>,
+    expected_password_hash: &str,
 ) -> Result<(), AppError> {
     let result = sqlx::query(
         "WITH eligible_account AS (
             SELECT id FROM accounts
             WHERE id = $1 AND account_status = 'active'
+                AND email_verified_at IS NOT NULL AND password_hash = $4
             FOR UPDATE
         )
         INSERT INTO account_sessions (account_id, token_hash, expires_at)
@@ -160,6 +161,7 @@ pub async fn create_session(
     .bind(account_id)
     .bind(token_hash)
     .bind(expires_at)
+    .bind(expected_password_hash)
     .execute(pool)
     .await
     .map_err(|_| AppError::Internal)?;
@@ -167,65 +169,6 @@ pub async fn create_session(
         return Err(AccountAuthError::SessionInvalid.into());
     }
     Ok(())
-}
-
-pub async fn create_password_reset_token(
-    pool: &PgPool,
-    account_id: Uuid,
-    token_hash: &str,
-) -> Result<(), AppError> {
-    sqlx::query("DELETE FROM password_reset_tokens WHERE account_id = $1")
-        .bind(account_id)
-        .execute(pool)
-        .await
-        .map_err(|_| AppError::Internal)?;
-    sqlx::query(
-        "INSERT INTO password_reset_tokens (
-            account_id, token_hash, expires_at
-        ) VALUES ($1, $2, $3)",
-    )
-    .bind(account_id)
-    .bind(token_hash)
-    .bind(Utc::now() + Duration::hours(PASSWORD_RESET_LIFETIME_HOURS))
-    .execute(pool)
-    .await
-    .map_err(|_| AppError::Internal)?;
-    Ok(())
-}
-
-pub async fn reset_account_password(
-    pool: &PgPool,
-    token_hash: &str,
-    password_hash: &str,
-) -> Result<(), AppError> {
-    let mut transaction = pool.begin().await.map_err(|_| AppError::Internal)?;
-    let account_id = sqlx::query_scalar::<_, Uuid>(
-        "DELETE FROM password_reset_tokens
-        WHERE token_hash = $1 AND expires_at > now()
-        RETURNING account_id",
-    )
-    .bind(token_hash)
-    .fetch_optional(&mut *transaction)
-    .await
-    .map_err(|_| AppError::Internal)?
-    .ok_or(AccountAuthError::PasswordResetInvalid)?;
-    sqlx::query("UPDATE accounts SET password_hash = $1, updated_at = now() WHERE id = $2")
-        .bind(password_hash)
-        .bind(account_id)
-        .execute(&mut *transaction)
-        .await
-        .map_err(|_| AppError::Internal)?;
-    sqlx::query("DELETE FROM account_sessions WHERE account_id = $1")
-        .bind(account_id)
-        .execute(&mut *transaction)
-        .await
-        .map_err(|_| AppError::Internal)?;
-    sqlx::query("DELETE FROM password_reset_tokens WHERE account_id = $1")
-        .bind(account_id)
-        .execute(&mut *transaction)
-        .await
-        .map_err(|_| AppError::Internal)?;
-    transaction.commit().await.map_err(|_| AppError::Internal)
 }
 
 pub async fn find_account_by_session(

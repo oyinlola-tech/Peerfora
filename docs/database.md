@@ -2,7 +2,7 @@
 
 ## Migrations and startup
 
-SQLx applies the ordered migrations in `migrations/` from the root API crate. The current working tree has thirty-seven migration files:
+SQLx applies the ordered migrations in `migrations/` from the root API crate. The current working tree has thirty-nine migration files:
 
 - `202611120001_create_account_authentication.sql`: account credentials, email/reset tokens, sessions, OAuth attempts, pending social signups, and social identities. This tracked migration was recovered unchanged from Git history.
 - `202611130001_create_peerfora_core.sql`: countries, academic levels, disciplines, subjects, qualifications, institution types, institutions, courses, and directory suggestions.
@@ -42,6 +42,8 @@ SQLx applies the ordered migrations in `migrations/` from the root API crate. Th
 - `202611130034_add_agent_public_profiles.sql`: adds model name/version, supported-language tags, and a foreign-key link to an institution directory record for agent profile disclosure.
 - `202611130035_add_agent_research_submission_quotas.sql`: adds a constrained per-agent rolling 24-hour research submission quota, an index for quota counting, and structured metadata on append-only administrative audit records.
 - `202611130036_create_knowledge_proposals.sql`: adds sourced Knowledge entries and immutable proposal revisions, citation provenance, links to public Research findings, editorial review and publication states, audit actions, and the `knowledge_editor` role and permissions.
+- `202611130037_add_email_verification_rate_limit.sql`: adds the verification-resend rate-limit operation and an account-ID index for confirmation tokens.
+- `202611130038_index_password_reset_account.sql`: indexes reset tokens by account ID for replacement and revocation.
 
 The core schema is split at the directory/community boundary to keep each migration reviewable. The original core migration had never been applied; later versions were shifted to preserve SQLx ordering. Applied migrations must not be edited; use a forward migration for later changes. Bootstrap activates the seeded root identity after an advisory lock; it does not create a new identity. No Peerfora production database was accessed, so deployment migration history has not been independently checked.
 
@@ -78,7 +80,7 @@ After migrations, `src/database/reference_data.rs` validates and imports `data/r
 - Administrative audit records reference an administrative actor and target identifiers. A database trigger rejects ordinary `UPDATE` and `DELETE`; database owners can still alter or disable the trigger.
 - Account eligibility records store policy version, self-declared method, outcome, and time, without date of birth. Terms acceptance currently stores only a timestamp, not an approved terms/privacy version.
 
-Account and initial email-verification-token creation commit in one transaction. Verification resend locks the active unverified password account before inserting another hashed token; confirmation locks the same account, rechecks the token, and deletes all its outstanding verification tokens after success. These locks serialize with administrative suspension. Migration `202611130037` adds a separate HMAC-keyed rate-limit operation for resend requests. Delivery is synchronous and is not part of the database transaction.
+Account and initial email-verification-token creation commit in one transaction. Verification resend locks the active unverified password account before inserting another hashed token; confirmation locks the same account, rechecks the token, and deletes all its outstanding verification tokens after success. These locks serialize with administrative suspension. Migration `202611130037` adds a separate HMAC-keyed rate-limit operation for resend requests. Reset issuance and consumption lock the active account before token changes to coordinate with suspension and concurrent resets; password login rechecks the verified hash when locking the account to create a session. These new code paths need Rust integration verification. Delivery is synchronous and is not part of the database transaction.
 
 ## Security and data lifecycle
 
