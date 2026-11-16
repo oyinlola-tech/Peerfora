@@ -1,6 +1,6 @@
 use url::Url;
 
-pub(super) fn validate_public_url(value: &str, production: bool) -> Result<(), String> {
+pub(crate) fn validate_public_url(value: &str, production: bool) -> Result<(), String> {
     let url = validate_http_url(value, production, "PEERFORA_PUBLIC_URL")?;
     if url.path() != "/" || url.query().is_some() || url.fragment().is_some() {
         return Err(

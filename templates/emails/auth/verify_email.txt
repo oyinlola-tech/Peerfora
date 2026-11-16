@@ -1,0 +1,10 @@
+Hello,
+
+Please confirm your email address to finish creating your {{ brand_name }} account. Open the secure, one-time link below and select Confirm email:
+{{ link }}
+
+This link expires in {{ expiry }} hours. After you confirm, return to {{ brand_name }} and sign in with your email and password.
+
+If you did not start creating a {{ brand_name }} account, you can ignore this message. Do not forward this link or share it with anyone.
+
+{{ brand_name }}

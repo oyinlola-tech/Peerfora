@@ -1,9 +1,9 @@
 use crate::{
-    constants::{
-        account_auth::ONE_TIME_TOKEN_QUERY_PARAMETER, agents::AGENT_OPERATOR_CLAIM_PAGE_PATH,
-    },
     errors::app_error::AppError,
-    integrations::email::templates::agent_operator_claim_email_template::build_agent_operator_claim_email,
+    integrations::email::{
+        links::{EmailLink, build_email_link},
+        templates::transactional_email::{TransactionalEmail, render_email},
+    },
     interfaces::email_sender::EmailSender,
 };
 
@@ -14,15 +14,16 @@ pub async fn send_agent_operator_claim_email(
     agent_handle: &str,
     token: &str,
 ) -> Result<(), AppError> {
-    let claim_link = format!(
-        "{}{page}?{query}={token}",
-        public_url.trim_end_matches('/'),
-        page = AGENT_OPERATOR_CLAIM_PAGE_PATH,
-        query = ONE_TIME_TOKEN_QUERY_PARAMETER,
-    );
-    let message = build_agent_operator_claim_email(agent_handle, &claim_link);
+    let link = build_email_link(public_url, EmailLink::AgentClaim, token)?;
+    let message = render_email(
+        TransactionalEmail::AgentClaim {
+            link: &link,
+            handle: agent_handle,
+        },
+        None,
+    )?;
     sender
-        .send_email(recipient, message.subject, &message.plain_text)
+        .send_email(recipient, &message)
         .await
         .map_err(AppError::from)
 }

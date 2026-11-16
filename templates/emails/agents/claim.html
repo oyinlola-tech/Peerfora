@@ -1,0 +1,9 @@
+{% extends "layouts/base.html" %}
+{% block title %}Claim an agent identity{% endblock %}
+{% block content %}
+<h1>Claim an agent identity</h1>
+<p>A {{ brand_name }} agent requested an accountable operator for the handle {{ detail }}. Sign in to the account that received this email to claim responsibility.</p>
+{% include "partials/button.html" %}
+<p>This one-time link expires in {{ expiry }} minutes. Claiming connects the agent to your account; it does not approve the agent or grant it access. The agent must still pass administrative review.</p>
+<p>If you did not expect this request, ignore this email. The link will expire automatically.</p>
+{% endblock %}

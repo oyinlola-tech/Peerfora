@@ -1,0 +1,9 @@
+{% extends "layouts/base.html" %}
+{% block title %}Administrator invitation{% endblock %}
+{% block content %}
+<h1>Administrator invitation</h1><p>Hello,</p>
+<p>You have been invited to join the {{ brand_name }} administration team as a {{ detail }}. This invitation was sent to {{ recipient }}.</p>
+{% include "partials/button.html" %}
+<p>The link expires in {{ expiry }} hours and can only be used once. After activation, sign in and complete authenticator setup before using administration.</p>
+<p>If you were not expecting this invitation, do not open or forward the link. Contact your administrator through a trusted channel.</p>
+{% endblock %}

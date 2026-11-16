@@ -10,8 +10,11 @@ use axum::{
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
 use peerfora_api::{
-    app::build_app, configs::settings::Settings, database::connect_database,
-    enums::account_auth_error::AccountAuthError, interfaces::email_sender::EmailSender,
+    app::build_app,
+    configs::settings::Settings,
+    database::connect_database,
+    enums::account_auth_error::AccountAuthError,
+    interfaces::email_sender::{EmailMessage, EmailSender},
     services::admin_auth::commands::provision_first_administrator_command::provision_first_administrator,
 };
 use sqlx::PgPool;
@@ -329,13 +332,15 @@ impl EmailSender for RecordingEmailSender {
     async fn send_email(
         &self,
         recipient: &str,
-        subject: &str,
-        message: &str,
+        message: &EmailMessage,
     ) -> Result<(), AccountAuthError> {
         let Ok(mut sent_emails) = self.sent_emails.lock() else {
             return Err(AccountAuthError::EmailDeliveryFailed);
         };
-        sent_emails.push(format!("{recipient}\n{subject}\n{message}"));
+        sent_emails.push(format!(
+            "{recipient}\n{}\n{}",
+            message.subject, message.plain_text
+        ));
         Ok(())
     }
 }

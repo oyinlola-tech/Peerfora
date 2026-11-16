@@ -36,10 +36,6 @@ pub struct ConfirmPasswordResetRequest {
 }
 
 #[derive(Deserialize)]
-pub struct VerifyEmailRequest {
-    pub token: String,
-}
-#[derive(Deserialize)]
 pub struct VerifyEmailQuery {
     pub token: String,
 }

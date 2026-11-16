@@ -3,7 +3,10 @@ use uuid::Uuid;
 use crate::{
     enums::account_auth_error::AccountAuthError,
     errors::app_error::AppError,
-    integrations::email::templates::administrator_invitation_email_template::build_administrator_invitation_email,
+    integrations::email::{
+        links::{EmailLink, build_email_link},
+        templates::transactional_email::{TransactionalEmail, render_email},
+    },
     interfaces::email_sender::EmailSender,
     models::admin_invitation::NewAdministratorInvitation,
     repositories::administrator_invitation_repository,
@@ -49,20 +52,27 @@ pub async fn issue_administrator_invitation(
         request.correlation_id,
     )
     .await?;
-    let invitation_message = build_administrator_invitation_email(
-        &normalized_email,
-        &role_display_name,
-        &invitation_token,
-        request.public_url,
-    );
-    if let Err(email_error) = email_sender
-        .send_email(
-            &normalized_email,
-            invitation_message.subject,
-            &invitation_message.plain_text,
-        )
-        .await
-    {
+    let delivery = async {
+        let link = build_email_link(
+            request.public_url,
+            EmailLink::AdministratorInvitation,
+            &invitation_token,
+        )?;
+        let message = render_email(
+            TransactionalEmail::AdministratorInvitation {
+                link: &link,
+                recipient: &normalized_email,
+                role: &role_display_name,
+            },
+            None,
+        )?;
+        email_sender
+            .send_email(&normalized_email, &message)
+            .await
+            .map_err(AppError::from)
+    }
+    .await;
+    if let Err(email_error) = delivery {
         administrator_invitation_repository::revoke_administrator_invitation_after_email_failure(
             pool,
             invitation_id,
@@ -70,7 +80,7 @@ pub async fn issue_administrator_invitation(
             request.correlation_id,
         )
         .await?;
-        return Err(email_error.into());
+        return Err(email_error);
     }
     Ok(())
 }

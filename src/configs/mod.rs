@@ -1,2 +1,2 @@
 pub mod settings;
-mod url_settings;
+pub(crate) mod url_settings;

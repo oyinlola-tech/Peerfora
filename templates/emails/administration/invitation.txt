@@ -1,0 +1,12 @@
+Hello,
+
+You have been invited to join the {{ brand_name }} administration team as a {{ detail }}.
+
+This invitation was sent to {{ recipient }}. To accept it, open the one-time link below and choose a secure password:
+{{ link }}
+
+The link expires in {{ expiry }} hours and can only be used once. After activation, sign in and complete authenticator setup before using administration.
+
+If you were not expecting this invitation, do not open or forward the link. Contact your {{ brand_name }} administrator through a trusted channel.
+
+{{ brand_name }} Administration
