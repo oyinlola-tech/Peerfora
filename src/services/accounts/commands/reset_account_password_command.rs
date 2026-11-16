@@ -4,7 +4,7 @@ use crate::{
     constants::account_auth::{MAX_PASSWORD_LENGTH_BYTES, MIN_PASSWORD_LENGTH_BYTES},
     enums::account_auth_error::AccountAuthError,
     errors::app_error::AppError,
-    repositories::account_repository,
+    repositories::account_password_reset_repository,
     utils::{one_time_token::hash_one_time_token, password::create_password_hash},
 };
 
@@ -17,6 +17,10 @@ pub async fn reset_account_password(
         return Err(AccountAuthError::PasswordLengthInvalid.into());
     }
     let password_hash = create_password_hash(new_password).await?;
-    account_repository::reset_account_password(pool, &hash_one_time_token(token), &password_hash)
-        .await
+    account_password_reset_repository::reset_account_password(
+        pool,
+        &hash_one_time_token(token),
+        &password_hash,
+    )
+    .await
 }

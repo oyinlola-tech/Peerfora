@@ -1,18 +1,19 @@
 use chrono::NaiveDate;
-use sqlx::PgPool;
 
 use crate::{
-    configs::settings::CountryPolicy,
     constants::account_auth::{
         MAX_EMAIL_LENGTH, MAX_PASSWORD_LENGTH_BYTES, MAX_USERNAME_LENGTH,
         MIN_PASSWORD_LENGTH_BYTES, MIN_USERNAME_LENGTH,
     },
     enums::account_auth_error::AccountAuthError,
     errors::app_error::AppError,
-    models::account::Account,
+    models::app_state::AppState,
     repositories::account_repository,
     services::academic_directory::queries::find_active_country_query,
-    services::accounts::commands::account_eligibility::require_account_age_eligibility,
+    services::accounts::commands::{
+        account_eligibility::require_account_age_eligibility,
+        send_account_email_command::send_account_verification_email,
+    },
     utils::{
         email_address::normalize_email_address,
         one_time_token::{create_one_time_token, hash_one_time_token},
@@ -30,24 +31,28 @@ pub struct NewAccount {
     pub accepted_terms: bool,
 }
 
-pub async fn register_account(
-    pool: &PgPool,
-    policies: &std::collections::HashMap<String, CountryPolicy>,
-    input: NewAccount,
-) -> Result<(Account, String), AppError> {
+pub async fn register_account(state: &AppState, input: NewAccount) -> Result<(), AppError> {
+    if state.email_sender.is_none() {
+        return Err(AccountAuthError::EmailDeliveryNotConfigured.into());
+    }
     validate_new_account(&input)?;
-    if !find_active_country_query::is_country_code_supported(pool, &input.country_code).await? {
+    if !find_active_country_query::is_country_code_supported(&state.database, &input.country_code)
+        .await?
+    {
         return Err(AccountAuthError::CountryCodeUnknown.into());
     }
-    let policy =
-        require_account_age_eligibility(policies, &input.country_code, input.date_of_birth)?;
+    let policy = require_account_age_eligibility(
+        &state.country_policies,
+        &input.country_code,
+        input.date_of_birth,
+    )?;
     let password_hash = create_password_hash(input.password).await?;
     let verification_token = create_one_time_token();
     let email = normalize_email_address(&input.email);
     let username = input.username.trim().to_ascii_lowercase();
     let verification_token_hash = hash_one_time_token(&verification_token);
     let account = account_repository::create_account(
-        pool,
+        &state.database,
         account_repository::NewAccountRecord {
             email: &email,
             username: &username,
@@ -59,7 +64,7 @@ pub async fn register_account(
         },
     )
     .await?;
-    Ok((account, verification_token))
+    send_account_verification_email(state, &account.email, &verification_token).await
 }
 
 fn validate_new_account(input: &NewAccount) -> Result<(), AppError> {

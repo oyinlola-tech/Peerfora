@@ -1,19 +1,19 @@
 use axum::{
-    Json,
+    Form, Json,
     extract::{Query, State},
     http::{HeaderMap, HeaderValue, StatusCode, header},
-    response::IntoResponse,
+    response::{Html, IntoResponse},
 };
 
 use crate::{
     constants::account_auth::{
         EMAIL_CONFIRMED_MESSAGE, EMAIL_VERIFICATION_REQUESTED_MESSAGE, MAX_EMAIL_LENGTH,
-        PASSWORD_RESET_COMPLETED_MESSAGE, PASSWORD_RESET_REQUESTED_MESSAGE,
+        PASSWORD_RESET_COMPLETED_MESSAGE, PASSWORD_RESET_REQUESTED_MESSAGE, VERIFY_EMAIL_ROUTE,
     },
     dtos::{
         auth_requests::{
             ConfirmPasswordResetRequest, RequestEmailVerificationRequest,
-            RequestPasswordResetRequest, VerifyEmailQuery,
+            RequestPasswordResetRequest, VerifyEmailQuery, VerifyEmailRequest,
         },
         auth_responses::MessageResponse,
     },
@@ -24,16 +24,27 @@ use crate::{
     services::access_control::commands::enforce_authentication_rate_limit_command::enforce_authentication_rate_limit,
     services::accounts::commands::{
         request_email_verification_command, request_password_reset_command,
-        reset_account_password_command, send_account_email_command, verify_account_email_command,
+        reset_account_password_command, verify_account_email_command,
     },
-    validations::account_auth_validation::validate_email_address,
+    validations::account_auth_validation::{validate_email_address, validate_verification_token},
 };
+
+pub async fn show_email_verification_confirmation(
+    Query(query): Query<VerifyEmailQuery>,
+) -> Result<Html<String>, AppError> {
+    validate_verification_token(&query.token)?;
+    Ok(Html(format!(
+        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>Confirm email</title></head><body><main><h1>Confirm your email</h1><p>Confirm only if you requested this Peerfora account.</p><form method=\"post\" action=\"{VERIFY_EMAIL_ROUTE}\"><input type=\"hidden\" name=\"token\" value=\"{}\"><button type=\"submit\">Confirm email</button></form></main></body></html>",
+        query.token
+    )))
+}
 
 pub async fn verify_account_email(
     State(state): State<AppState>,
-    Query(query): Query<VerifyEmailQuery>,
+    Form(request): Form<VerifyEmailRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    verify_account_email_command::verify_account_email(&state.database, &query.token).await?;
+    validate_verification_token(&request.token)?;
+    verify_account_email_command::verify_account_email(&state.database, &request.token).await?;
     let mut headers = HeaderMap::new();
     headers.insert(header::CACHE_CONTROL, HeaderValue::from_static("no-store"));
     headers.insert("referrer-policy", HeaderValue::from_static("no-referrer"));
@@ -60,19 +71,7 @@ pub async fn request_email_verification(
         &state.authentication_rate_limit_hash_key,
     )
     .await?;
-    if state.email_sender.is_some()
-        && let Some((email, token)) =
-            request_email_verification_command::request_email_verification(
-                &state.database,
-                &request.email,
-            )
-            .await?
-        && send_account_email_command::send_account_verification_email(&state, &email, &token)
-            .await
-            .is_err()
-    {
-        tracing::warn!("Account verification email delivery failed");
-    }
+    request_email_verification_command::request_email_verification(&state, &request.email).await?;
     Ok((
         StatusCode::ACCEPTED,
         Json(MessageResponse {
@@ -96,16 +95,7 @@ pub async fn request_password_reset(
         &state.authentication_rate_limit_hash_key,
     )
     .await?;
-    if state.email_sender.is_some()
-        && let Some((email, token)) =
-            request_password_reset_command::request_password_reset(&state.database, &request.email)
-                .await?
-        && send_account_email_command::send_password_reset_email(&state, &email, &token)
-            .await
-            .is_err()
-    {
-        tracing::warn!("Account password reset email delivery failed");
-    }
+    request_password_reset_command::request_password_reset(&state, &request.email).await?;
     Ok((
         StatusCode::ACCEPTED,
         Json(MessageResponse {

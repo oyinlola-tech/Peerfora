@@ -8,7 +8,8 @@ pub const X_FRAME_OPTIONS_VALUE: &str = "DENY";
 pub const CACHE_CONTROL_HEADER: &str = "cache-control";
 pub const CACHE_CONTROL_VALUE: &str = "no-store";
 pub const CONTENT_SECURITY_POLICY_HEADER: &str = "content-security-policy";
-pub const CONTENT_SECURITY_POLICY_VALUE: &str = "default-src 'none'; frame-ancestors 'none'";
+pub const CONTENT_SECURITY_POLICY_VALUE: &str =
+    "default-src 'none'; frame-ancestors 'none'; form-action 'self'";
 pub const STRICT_TRANSPORT_SECURITY_HEADER: &str = "strict-transport-security";
 pub const STRICT_TRANSPORT_SECURITY_VALUE: &str = "max-age=31536000";
 pub const REQUEST_CORRELATION_ID_HEADER: &str = "x-request-id";

@@ -22,7 +22,6 @@ use crate::{
     enums::account_auth_error::AccountAuthError,
     enums::authentication_rate_limit_operation::AuthenticationRateLimitOperation,
     errors::app_error::AppError,
-    integrations::email::administrator_password_reset_email::send_administrator_password_reset_email,
     models::app_state::AppState,
     services::access_control::commands::enforce_authentication_rate_limit_command::enforce_authentication_rate_limit,
     services::admin_auth::commands::{
@@ -48,33 +47,7 @@ pub async fn request_password_reset(
         &state.authentication_rate_limit_hash_key,
     )
     .await?;
-    if let Some(email_sender) = state.email_sender.as_deref() {
-        let reset = request_administrator_password_reset(&state.database, &request.email).await?;
-        if let Some(recipient) = reset.recipient {
-            let delivery_failed = send_administrator_password_reset_email(
-                email_sender,
-                &recipient.email,
-                &reset.token,
-                state.public_url.trim_end_matches('/'),
-            )
-            .await
-            .is_err();
-            if delivery_failed {
-                tracing::warn!("administrator password reset email delivery failed");
-                let cleanup_failed =
-                    crate::repositories::admin_auth_repository::revoke_failed_administrator_password_reset_delivery(
-                        &state.database,
-                        recipient.administrator_id,
-                        &reset.token_hash,
-                    )
-                    .await
-                    .is_err();
-                if cleanup_failed {
-                    tracing::warn!("administrator password reset token cleanup failed");
-                }
-            }
-        }
-    }
+    request_administrator_password_reset(&state, &request.email).await?;
     Ok((
         StatusCode::ACCEPTED,
         no_store_headers(),
