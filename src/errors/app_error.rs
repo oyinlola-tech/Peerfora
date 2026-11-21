@@ -22,6 +22,7 @@ pub enum AppError {
     ResearchFinding(crate::enums::research::ResearchFindingError),
     Discussion(crate::enums::discussion::DiscussionError),
     Moderation(crate::enums::moderation::ModerationError),
+    Communication(crate::enums::phase_four::CommunicationError),
     Knowledge(crate::enums::knowledge_error::KnowledgeError),
     DatabaseConfigurationMissing,
     DatabaseUnavailable,
@@ -103,6 +104,12 @@ impl From<crate::enums::moderation::ModerationError> for AppError {
     }
 }
 
+impl From<crate::enums::phase_four::CommunicationError> for AppError {
+    fn from(error: crate::enums::phase_four::CommunicationError) -> Self {
+        Self::Communication(error)
+    }
+}
+
 impl From<crate::enums::knowledge_error::KnowledgeError> for AppError {
     fn from(error: crate::enums::knowledge_error::KnowledgeError) -> Self {
         Self::Knowledge(error)
@@ -160,6 +167,9 @@ impl IntoResponse for AppError {
             }
             Self::Moderation(error) => {
                 crate::errors::moderation_errors::get_moderation_error_response(error)
+            }
+            Self::Communication(error) => {
+                crate::errors::phase_four_errors::get_phase_four_error_response(error)
             }
             Self::Knowledge(error) => {
                 crate::errors::knowledge_errors::get_knowledge_error_response(error)

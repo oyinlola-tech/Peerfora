@@ -2,7 +2,7 @@
 
 ## Migrations and startup
 
-SQLx applies the ordered migrations in `migrations/` from the root API crate. The current working tree has thirty-nine migration files:
+SQLx applies the ordered migrations in `migrations/` from the root API crate. The current working tree has forty migration files:
 
 - `202611120001_create_account_authentication.sql`: account credentials, email/reset tokens, sessions, OAuth attempts, pending social signups, and social identities. This tracked migration was recovered unchanged from Git history.
 - `202611130001_create_peerfora_core.sql`: countries, academic levels, disciplines, subjects, qualifications, institution types, institutions, courses, and directory suggestions.
@@ -44,6 +44,7 @@ SQLx applies the ordered migrations in `migrations/` from the root API crate. Th
 - `202611130036_create_knowledge_proposals.sql`: adds sourced Knowledge entries and immutable proposal revisions, citation provenance, links to public Research findings, editorial review and publication states, audit actions, and the `knowledge_editor` role and permissions.
 - `202611130037_add_email_verification_rate_limit.sql`: adds the verification-resend rate-limit operation and an account-ID index for confirmation tokens.
 - `202611130038_index_password_reset_account.sql`: indexes reset tokens by account ID for replacement and revocation.
+- `202611130039_create_phase_four_communication.sql`: Phase Four communication schema — `notifications`, `notification_preferences`, `device_push_tokens`, `conversations`, `conversation_members`, `user_blocks`, `messages`, `message_read_states`, `media_objects`, `media_upload_sessions`, `media_processing_jobs`, `email_delivery_outbox`, and `realtime_event_cursors`. Adds conversation/message/media target columns and active-report indexes to `moderation_reports`, seeds the communication permission catalogue and role grants, installs a default notification-preferences trigger, and rebuilds the `moderation_reports_check` constraint to accept the three new target columns.
 
 The core schema is split at the directory/community boundary to keep each migration reviewable. The original core migration had never been applied; later versions were shifted to preserve SQLx ordering. Applied migrations must not be edited; use a forward migration for later changes. Bootstrap activates the seeded root identity after an advisory lock; it does not create a new identity. No Peerfora production database was accessed, so deployment migration history has not been independently checked.
 
