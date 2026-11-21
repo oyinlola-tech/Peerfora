@@ -125,7 +125,7 @@ pub async fn enqueue_notification_email(
     outbox_repository::publish_email_delivery(pool, recipient_email, &encrypted_payload).await
 }
 
-pub async fn publish_notification_realtime(
+pub fn publish_notification_realtime(
     hub: &RealtimeHub,
     recipient_account_id: Uuid,
     notification_id: Uuid,

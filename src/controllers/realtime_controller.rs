@@ -24,8 +24,8 @@ pub async fn realtime_events(
     headers: HeaderMap,
 ) -> Result<impl IntoResponse, AppError> {
     let account_id = require_account_id(&state, &headers).await?;
-    let mut receiver = state.realtime_hub.subscribe();
-    let stream = filtered_event_stream(&mut receiver, account_id);
+    let receiver = state.realtime_hub.subscribe();
+    let stream = filtered_event_stream(receiver, account_id);
     Ok(axum::response::sse::Sse::new(stream).keep_alive(
         axum::response::sse::KeepAlive::new()
             .interval(std::time::Duration::from_secs(
@@ -36,10 +36,10 @@ pub async fn realtime_events(
 }
 
 fn filtered_event_stream(
-    receiver: &mut tokio::sync::broadcast::Receiver<RealtimeEvent>,
+    receiver: tokio::sync::broadcast::Receiver<RealtimeEvent>,
     account_id: Uuid,
-) -> impl Stream<Item = Result<axum::response::sse::Event, AppError>> + '_ {
-    futures_util::stream::unfold(receiver, move |receiver| async move {
+) -> impl Stream<Item = Result<axum::response::sse::Event, AppError>> + 'static {
+    futures_util::stream::unfold(receiver, move |mut receiver| async move {
         loop {
             match receiver.recv().await {
                 Ok(event) if event.account_id == account_id => {

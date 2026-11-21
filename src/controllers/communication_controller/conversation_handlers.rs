@@ -221,7 +221,7 @@ pub async fn send_conversation_message(
         conversation_id,
         &request.body,
         request.parent_message_id,
-        Some(&state.realtime_hub),
+        Some(&*state.realtime_hub),
     )
     .await?;
     if let Some(encryption_key) = state.admin_mfa_encryption_key.as_deref() {

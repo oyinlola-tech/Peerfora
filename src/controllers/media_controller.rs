@@ -82,7 +82,8 @@ pub async fn upload_media_bytes(
         session_id,
     )
     .await?;
-    media_commands::upload_media_chunk(&*state.media_storage, &session.object_key, &body).await
+    media_commands::upload_media_chunk(&*state.media_storage, &session.object_key, &body).await?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn complete_media_upload(
