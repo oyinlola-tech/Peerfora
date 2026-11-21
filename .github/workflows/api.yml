@@ -108,9 +108,9 @@ jobs:
         if: always()
         run: |
           if [ -s /tmp/cargo-check.log ]; then
-            while IFS= read -r line; do
+            tail -n 80 /tmp/cargo-check.log | while IFS= read -r line; do
               printf '::error::check::%s\n' "$line"
-            done < /tmp/cargo-check.log
+            done
           fi
       - name: cargo clippy
         run: |
