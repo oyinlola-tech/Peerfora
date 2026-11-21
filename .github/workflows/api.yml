@@ -85,7 +85,13 @@ jobs:
       - name: cargo fmt
         run: |
           set -o pipefail
-          cargo fmt --all -- --check 2>&1 | tee /tmp/cargo-fmt.log
+          diff="$(cargo fmt --all -- --check 2>&1)"
+          status=$?
+          printf '%s\n' "$diff"
+          if [ "$status" -ne 0 ]; then
+            printf '::error::cargo fmt --check reported formatting differences::\n%s\n' "$diff"
+            exit "$status"
+          fi
       - name: cargo check
         run: |
           set -o pipefail
