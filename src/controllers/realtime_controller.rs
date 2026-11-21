@@ -1,9 +1,5 @@
-use axum::{
-    extract::{State, ws},
-    http::HeaderMap,
-    response::IntoResponse,
-};
-use futures_util::{Stream, StreamExt};
+use axum::{extract::State, http::HeaderMap, response::IntoResponse};
+use futures_util::Stream;
 use uuid::Uuid;
 
 use crate::{
@@ -58,57 +54,6 @@ fn filtered_event_stream(
             }
         }
     })
-}
-
-pub async fn websocket_realtime(
-    State(state): State<AppState>,
-    headers: HeaderMap,
-    websocket: ws::WebSocketUpgrade,
-) -> Result<impl IntoResponse, AppError> {
-    let account_id = require_account_id(&state, &headers).await?;
-    let _ = account_id;
-    Ok(websocket.on_upgrade(move |socket| handle_websocket(socket)))
-}
-
-async fn handle_websocket(socket: axum::extract::ws::WebSocket) {
-    use futures_util::SinkExt;
-    let (mut sender, mut receiver) = socket.split();
-    let mut interval = tokio::time::interval(std::time::Duration::from_secs(
-        REALTIME_HEARTBEAT_INTERVAL_SECONDS,
-    ));
-    loop {
-        tokio::select! {
-            client_message = receiver.next() => {
-                match client_message {
-                    Some(Ok(axum::extract::ws::Message::Text(_))) => {
-                        if sender
-                            .send(axum::extract::ws::Message::Text(
-                                "{\"type\":\"pong\"}".to_owned(),
-                            ))
-                            .await
-                            .is_err()
-                        {
-                            break;
-                        }
-                    }
-                    Some(Ok(axum::extract::ws::Message::Close(_))) | None => break,
-                    Some(Err(_)) => break,
-                    Some(Ok(_)) => {}
-                }
-            }
-            _ = interval.tick() => {
-                if sender
-                    .send(axum::extract::ws::Message::Text(
-                        "{\"type\":\"heartbeat\"}".to_owned(),
-                    ))
-                    .await
-                    .is_err()
-                {
-                    break;
-                }
-            }
-        }
-    }
 }
 
 async fn require_account_id(state: &AppState, headers: &HeaderMap) -> Result<Uuid, AppError> {

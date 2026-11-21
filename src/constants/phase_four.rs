@@ -28,7 +28,6 @@ pub const MEDIA_ROUTE: &str = "/api/v1/media/{id}";
 pub const MEDIA_DOWNLOAD_ROUTE: &str = "/api/v1/media/{id}/download";
 
 pub const REALTIME_ROUTE: &str = "/api/v1/realtime";
-pub const REALTIME_WEBSOCKET_ROUTE: &str = "/api/v1/realtime/ws";
 
 pub const ADMIN_COMMUNICATION_ROUTE: &str = "/api/v1/admin/communication";
 pub const ADMIN_CONVERSATION_RESTRICT_ROUTE: &str =
