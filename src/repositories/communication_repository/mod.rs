@@ -1,4 +1,5 @@
 pub mod conversation_repository;
+pub mod media_processing_repository;
 pub mod media_repository;
 pub mod message_repository;
 pub mod notification_repository;

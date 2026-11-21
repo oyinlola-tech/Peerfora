@@ -53,13 +53,14 @@ pub async fn list_notifications(
         query.offset,
     )
     .await?;
+    let page_size = notifications.len() as i64;
     Ok(Json(NotificationPageResponse {
         notifications: notifications
             .into_iter()
             .map(NotificationResponse::from)
             .collect(),
         total_count,
-        page_size: notifications.len() as i64,
+        page_size,
         offset: query.offset.unwrap_or(0),
     }))
 }

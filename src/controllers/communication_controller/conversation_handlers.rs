@@ -65,13 +65,14 @@ pub async fn list_conversations(
         query.offset,
     )
     .await?;
+    let page_size = conversations.len() as i64;
     Ok(Json(ConversationPageResponse {
         conversations: conversations
             .into_iter()
             .map(ConversationResponse::from)
             .collect(),
         total_count,
-        page_size: conversations.len() as i64,
+        page_size,
         offset: query.offset.unwrap_or(0),
     }))
 }

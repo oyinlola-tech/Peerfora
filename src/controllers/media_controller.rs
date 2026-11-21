@@ -16,6 +16,7 @@ use crate::{
         phase_four::CommunicationError,
     },
     errors::app_error::AppError,
+    interfaces::media_storage::MediaStorage,
     models::{
         app_state::AppState,
         communication::{MediaReportInput, MediaUploadCompleteInput, MediaUploadInitInput},
