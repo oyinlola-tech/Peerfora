@@ -86,15 +86,13 @@ jobs:
       - name: cargo fmt
         run: |
           set -o pipefail
-          printf '::error::rustc::%s\n' "$(rustc --version)"
-          printf '::error::rustfmt::%s\n' "$(rustfmt --version)"
-          out="$(cargo fmt --all -- --check 2>&1)"
+          cargo fmt --all -- --check > /tmp/cargo-fmt.log 2>&1
           status=$?
-          printf '%s\n' "$out" | tee /tmp/cargo-fmt.log
-          if [ -n "$out" ]; then
-            printf '%s\n' "$out" | head -80 | while IFS= read -r line; do
-              printf '::error::fmtout::%s\n' "$line"
-            done
+          printf '::error::fmtstatus::exit=%s bytes=%s\n' "$status" "$(wc -c < /tmp/cargo-fmt.log)"
+          if [ -s /tmp/cargo-fmt.log ]; then
+            while IFS= read -r line; do
+              printf '::error::fmt::%s\n' "$line"
+            done < /tmp/cargo-fmt.log
           fi
           exit "$status"
       - name: cargo check
