@@ -26,7 +26,7 @@ impl EmailSender for TestSender {
             .push((
                 recipient.to_owned(),
                 EmailMessage {
-                    subject: message.subject,
+                    subject: message.subject.clone(),
                     plain_text: message.plain_text.clone(),
                     html: message.html.clone(),
                 },

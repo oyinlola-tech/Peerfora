@@ -3,3 +3,4 @@ pub const DEFAULT_SERVER_PORT: &str = "3000";
 pub const DEFAULT_LOG_FILTER: &str = "info";
 pub const DEFAULT_SMTP_PORT: &str = "587";
 pub const DEFAULT_PUBLIC_URL: &str = "http://localhost:3000";
+pub const DEFAULT_MEDIA_STORAGE_BASE_PATH: &str = "./data/media";

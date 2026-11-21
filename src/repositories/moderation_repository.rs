@@ -151,6 +151,39 @@ pub async fn create_report(
             .fetch_optional(pool)
             .await
         }
+        ModerationReportTarget::Conversation(target_id) => {
+            sqlx::query_as::<_, (Uuid, DateTime<Utc>)>(
+                "INSERT INTO moderation_reports (reporter_account_id, target_conversation_id, category, description)\n                SELECT reporter.id, target.id, $3, $4 FROM accounts reporter\n                JOIN conversations target ON target.id = $2 AND target.lifecycle_status IN ('active', 'archived')\n                WHERE reporter.id = $1 AND reporter.account_status = 'active'\n                    AND reporter.email_verified_at IS NOT NULL\n                    AND EXISTS (\n                        SELECT 1 FROM conversation_members membership\n                        WHERE membership.conversation_id = target.id AND membership.account_id = reporter.id\n                            AND membership.membership_status = 'active'\n                    )\n                ON CONFLICT DO NOTHING RETURNING id, created_at",
+            )
+            .bind(reporter_account_id)
+            .bind(target_id)
+            .bind(category)
+            .bind(description)
+            .fetch_optional(pool)
+            .await
+        }
+        ModerationReportTarget::Message(target_id) => {
+            sqlx::query_as::<_, (Uuid, DateTime<Utc>)>(
+                "INSERT INTO moderation_reports (reporter_account_id, target_message_id, category, description)\n                SELECT reporter.id, target.id, $3, $4 FROM accounts reporter\n                JOIN messages target ON target.id = $2\n                JOIN conversations conversation ON conversation.id = target.conversation_id\n                    AND conversation.lifecycle_status IN ('active', 'archived')\n                WHERE reporter.id = $1 AND reporter.account_status = 'active'\n                    AND reporter.email_verified_at IS NOT NULL\n                    AND EXISTS (\n                        SELECT 1 FROM conversation_members membership\n                        WHERE membership.conversation_id = conversation.id AND membership.account_id = reporter.id\n                            AND membership.membership_status = 'active'\n                    )\n                ON CONFLICT DO NOTHING RETURNING id, created_at",
+            )
+            .bind(reporter_account_id)
+            .bind(target_id)
+            .bind(category)
+            .bind(description)
+            .fetch_optional(pool)
+            .await
+        }
+        ModerationReportTarget::Media(target_id) => {
+            sqlx::query_as::<_, (Uuid, DateTime<Utc>)>(
+                "INSERT INTO moderation_reports (reporter_account_id, target_media_id, category, description)\n                SELECT reporter.id, target.id, $3, $4 FROM accounts reporter\n                JOIN media_objects target ON target.id = $2\n                WHERE reporter.id = $1 AND reporter.account_status = 'active'\n                    AND reporter.email_verified_at IS NOT NULL\n                    AND (target.owner_account_id = reporter.id\n                        OR (target.resource_type = 'message' AND EXISTS (\n                            SELECT 1 FROM messages message\n                            JOIN conversation_members membership ON membership.conversation_id = message.conversation_id\n                                AND membership.account_id = reporter.id\n                                AND membership.membership_status = 'active'\n                            WHERE message.id = target.resource_id\n                        )))\n                ON CONFLICT DO NOTHING RETURNING id, created_at",
+            )
+            .bind(reporter_account_id)
+            .bind(target_id)
+            .bind(category)
+            .bind(description)
+            .fetch_optional(pool)
+            .await
+        }
     }
     .map_err(|_| AppError::Internal)?;
 
@@ -190,6 +223,9 @@ fn target_database_column(target: ModerationReportTarget) -> (&'static str, Uuid
         ModerationReportTarget::Comment(id) => ("target_comment_id", id),
         ModerationReportTarget::ResearchProject(id) => ("target_research_project_id", id),
         ModerationReportTarget::ResearchFinding(id) => ("target_research_finding_id", id),
+        ModerationReportTarget::Conversation(id) => ("target_conversation_id", id),
+        ModerationReportTarget::Message(id) => ("target_message_id", id),
+        ModerationReportTarget::Media(id) => ("target_media_id", id),
     }
 }
 

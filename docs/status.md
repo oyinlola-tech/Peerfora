@@ -16,6 +16,19 @@ The product requirements document defines six connected experiences: Communities
 - `blocked`: local formatting, metadata without dependencies, source line limits and `git diff --check` passed; Cargo check/test/Clippy cannot resolve uncached `aes-gcm` because crates.io is inaccessible. Docker, cargo-audit/deny, full native/WASM builds and real SMTP/OIDC are unavailable. Metadata and YAML parsing do not establish builds.
 - `not_implemented`: the mandatory ecosystem scenario cannot run: community voting, research invitation email, institution claims/representatives, and durable email retry are absent. Model execution/training/marketplace, final frontend design and production deployment remain deferred.
 
+## Phase Four communication — implemented_unverified
+
+The Phase Four communication surface is written end-to-end but **not compiled**: the local environment cannot resolve the Rust dependency index (crates.io is unreachable, so `cargo check`, `clippy`, and the integration test cannot run). SQL-level behavior is validated against a disposable PostgreSQL 17.11 instance.
+
+- `implemented_unverified`: notification inbox (list/unread-count/read/read-all/preferences), conversations (create/list/get/update, member list/add/remove, lifecycle), messages (list/send/get/mark-read), device push tokens (list/get/register/update), and media (initiate upload / stream bytes / complete with checksum / list / get / download / report) with local-file storage.
+- `implemented_unverified`: membership-scoped authorization at the repository layer — conversation access, message send, restricted-conversation filtering, media ownership, and device-token ownership all reject non-members.
+- `implemented_unverified`: realtime hub with SSE (`/api/v1/realtime`) and WebSocket (`/api/v1/realtime/ws`) plus per-account event cursors.
+- `implemented_unverified`: durable email delivery — message send enqueues encrypted per-recipient `email_delivery_outbox` rows; the background worker claims, decrypts, and sends them with attempts and processing states.
+- `implemented_unverified`: admin enforcement — conversation restrict/close and media quarantine/release for trust-and-safety roles.
+- `implemented_unverified`: moderation reporting extended to conversation, message, and media targets with the `moderation_reports` CHECK updated to accept the three new target columns.
+- `sql_validated`: migration `202611130039_create_phase_four_communication.sql` applies cleanly forward (40 migrations) and on upgrade; a 13-check SQL suite passes against PostgreSQL 17.11 (`/tmp/peerfora-phase4/reset-and-test.mjs`), covering notification prefs/create, conversation create+member join, message send + membership authorization, restricted-conversation list filtering, media upload lifecycle + checksum, media quarantine/release, device push register/revoke, email outbox claim/complete, realtime cursor upsert, and admin/conversation/message moderation reports.
+- `blocked`: the Rust crate does not compile locally, so no Cargo check, Clippy, or the `tests/phase_four_communication_postgres.rs` integration test has executed. The exact seeded admin permission keys for `media.quarantine` and `messaging.enforcement.manage` require confirmation against the permission catalogue.
+
 ## Phase Four dependency readiness
 
 | Dependency | Classification | Evidence or blocker |

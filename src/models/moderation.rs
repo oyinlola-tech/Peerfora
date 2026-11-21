@@ -9,6 +9,9 @@ pub enum ModerationReportTarget {
     Comment(Uuid),
     ResearchProject(Uuid),
     ResearchFinding(Uuid),
+    Conversation(Uuid),
+    Message(Uuid),
+    Media(Uuid),
 }
 
 #[derive(sqlx::FromRow)]
