@@ -86,15 +86,7 @@ jobs:
       - name: cargo fmt
         run: |
           set -o pipefail
-          cargo fmt --all -- --check > /tmp/cargo-fmt.log 2>&1
-          status=$?
-          printf '::error::fmtstatus::exit=%s bytes=%s\n' "$status" "$(wc -c < /tmp/cargo-fmt.log)"
-          if [ -s /tmp/cargo-fmt.log ]; then
-            while IFS= read -r line; do
-              printf '::error::fmt::%s\n' "$line"
-            done < /tmp/cargo-fmt.log
-          fi
-          exit "$status"
+          cargo fmt --all -- --check 2>&1 | tee /tmp/cargo-fmt.log
       - name: cargo check
         run: |
           set -o pipefail
