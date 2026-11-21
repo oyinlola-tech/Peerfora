@@ -82,7 +82,10 @@ jobs:
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - run: bash scripts/check_source_file_line_limits.sh
-      - run: cargo fmt --all -- --check
+      - name: cargo fmt
+        run: |
+          set -o pipefail
+          cargo fmt --all -- --check 2>&1 | tee /tmp/cargo-fmt.log
       - name: cargo check
         run: |
           set -o pipefail
