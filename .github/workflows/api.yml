@@ -89,7 +89,9 @@ jobs:
           status=$?
           printf '%s\n' "$diff"
           if [ "$status" -ne 0 ]; then
-            printf '::error::cargo fmt --check reported formatting differences::\n%s\n' "$diff"
+            printf '%s\n' "$diff" | head -60 | while IFS= read -r line; do
+              printf '::error::fmt::%s\n' "$line"
+            done
             exit "$status"
           fi
       - name: cargo check
