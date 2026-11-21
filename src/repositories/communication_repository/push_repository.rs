@@ -39,7 +39,7 @@ pub async fn register_device_token(
     .map_err(|_| AppError::Internal)?;
 
     match existing {
-        Some((id, active)) => {
+        Some((id, _)) => {
             sqlx::query("UPDATE device_push_tokens SET active = TRUE, updated_at = now() WHERE id = $1")
                 .bind(id)
                 .execute(pool)

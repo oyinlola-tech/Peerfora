@@ -66,7 +66,7 @@ pub async fn create_upload_session(
         size_bytes,
         checksum,
     )?;
-    let object_key = format!("{owner_account_id}/{}/{Uuid::new_v4()}", resource_type);
+    let object_key = format!("{owner_account_id}/{resource_type}/{Uuid::new_v4()}");
     let uploading = MediaProcessingStatus::Uploading.as_db_value();
     let media_object_id: Uuid = sqlx::query_scalar(
         "INSERT INTO media_objects (owner_account_id, resource_type, resource_id, object_key,\
