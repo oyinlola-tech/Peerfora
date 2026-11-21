@@ -103,7 +103,15 @@ jobs:
       - name: cargo check
         run: |
           set -o pipefail
-          cargo check --locked --all-targets 2>&1 | tee /tmp/cargo-check.log
+          cargo check --locked --all-targets > /tmp/cargo-check.log 2>&1
+      - name: show check log
+        if: always()
+        run: |
+          if [ -s /tmp/cargo-check.log ]; then
+            while IFS= read -r line; do
+              printf '::error::check::%s\n' "$line"
+            done < /tmp/cargo-check.log
+          fi
       - name: cargo clippy
         run: |
           set -o pipefail
