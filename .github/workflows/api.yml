@@ -108,7 +108,7 @@ jobs:
         if: always()
         run: |
           if [ -s /tmp/cargo-check.log ]; then
-            grep -nE "error|Error|expected|cannot|-->|note:|warning:" /tmp/cargo-check.log | tail -n 25 | while IFS= read -r line; do
+            grep -nE "error\[|--> |expected |cannot find|cannot resolve|note:" /tmp/cargo-check.log | tail -n 25 | while IFS= read -r line; do
               printf '::error::check::%s\n' "$line"
             done
           fi
