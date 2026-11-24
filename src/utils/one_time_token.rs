@@ -10,6 +10,5 @@ pub fn create_one_time_token() -> String {
 }
 
 pub fn hash_one_time_token(token: &str) -> String {
-    // Tokens are 256-bit CSPRNG values; this indexed hash is for token lookup, not password storage.
     hex::encode(Sha256::digest(token.as_bytes()))
 }

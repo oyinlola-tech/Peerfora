@@ -8,8 +8,8 @@ use crate::constants::authentication_rate_limits::{
     AUTHENTICATION_RATE_LIMIT_HASH_KEY_MINIMUM_BYTES, AUTHENTICATION_RATE_LIMIT_HASH_KEY_SETTING,
 };
 use crate::constants::runtime_settings::{
-    DEFAULT_LOG_FILTER, DEFAULT_PUBLIC_URL, DEFAULT_SERVER_HOST, DEFAULT_SERVER_PORT,
-    DEFAULT_SMTP_PORT,
+    DEFAULT_LOG_FILTER, DEFAULT_MEDIA_STORAGE_BASE_PATH, DEFAULT_PUBLIC_URL, DEFAULT_SERVER_HOST,
+    DEFAULT_SERVER_PORT, DEFAULT_SMTP_PORT,
 };
 use crate::constants::security::{
     ALLOWED_ORIGINS_SEPARATOR, ALLOWED_ORIGINS_SETTING, DEFAULT_REQUEST_TIMEOUT_SECONDS,
@@ -47,6 +47,7 @@ pub struct Settings {
     pub smtp_username: Option<String>,
     pub smtp_password: Option<String>,
     pub smtp_from: Option<String>,
+    pub media_storage_base_path: String,
     pub public_url: String,
     pub allowed_origins: Vec<HeaderValue>,
     pub request_timeout_seconds: u64,
@@ -80,6 +81,8 @@ pub fn load_settings() -> Result<Settings, Box<dyn std::error::Error>> {
     let smtp_username = read_optional_setting("PEERFORA_SMTP_USERNAME");
     let smtp_password = read_optional_setting("PEERFORA_SMTP_PASSWORD");
     let smtp_from = read_optional_setting("PEERFORA_SMTP_FROM");
+    let media_storage_base_path = env::var("PEERFORA_MEDIA_STORAGE_BASE_PATH")
+        .unwrap_or_else(|_| DEFAULT_MEDIA_STORAGE_BASE_PATH.to_owned());
     let public_url =
         env::var("PEERFORA_PUBLIC_URL").unwrap_or_else(|_| DEFAULT_PUBLIC_URL.to_owned());
     validate_public_url(&public_url, production_environment)?;
@@ -103,6 +106,7 @@ pub fn load_settings() -> Result<Settings, Box<dyn std::error::Error>> {
         smtp_username,
         smtp_password,
         smtp_from,
+        media_storage_base_path,
         public_url,
         allowed_origins,
         request_timeout_seconds,

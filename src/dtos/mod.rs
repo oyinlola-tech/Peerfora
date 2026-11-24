@@ -8,6 +8,7 @@ pub mod agent_credential;
 pub mod agent_identity;
 pub mod auth_requests;
 pub mod auth_responses;
+pub mod communication;
 pub mod community_queries;
 pub mod community_requests;
 pub mod community_responses;

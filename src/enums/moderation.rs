@@ -40,6 +40,27 @@ impl ModerationReportCategory {
             Self::Other => "other",
         }
     }
+
+    pub fn from_category(value: &str) -> Result<Self, ModerationError> {
+        match value {
+            "spam" => Ok(Self::Spam),
+            "harassment" => Ok(Self::Harassment),
+            "bullying" => Ok(Self::Bullying),
+            "hate_and_discrimination" => Ok(Self::HateAndDiscrimination),
+            "threats" => Ok(Self::Threats),
+            "doxxing" => Ok(Self::Doxxing),
+            "sexual_exploitation" => Ok(Self::SexualExploitation),
+            "impersonation" => Ok(Self::Impersonation),
+            "scams" => Ok(Self::Scams),
+            "malicious_links" => Ok(Self::MaliciousLinks),
+            "academic_cheating" => Ok(Self::AcademicCheating),
+            "copyright" => Ok(Self::Copyright),
+            "illegal_content" => Ok(Self::IllegalContent),
+            "coordinated_abuse" => Ok(Self::CoordinatedAbuse),
+            "other" => Ok(Self::Other),
+            _ => Err(ModerationError::DescriptionInvalid),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Deserialize, Serialize)]

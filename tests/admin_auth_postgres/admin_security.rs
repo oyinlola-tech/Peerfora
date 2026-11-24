@@ -164,7 +164,7 @@ pub async fn verify_administrator_sessions_and_permissions(
     let second_login_response = send_json(
         app.clone(),
         "/api/v1/admin/auth/login",
-        serde_json::json!({ "email": ADMIN_EMAIL, "password": context.administrator_password }),
+        serde_json::json!({ "email": ADMIN_EMAIL, "password": ADMIN_PASSWORD }),
     )
     .await;
     let second_login_json = response_json(second_login_response).await;
@@ -191,7 +191,7 @@ pub async fn verify_administrator_sessions_and_permissions(
     let reused_recovery_login = send_json(
         app.clone(),
         "/api/v1/admin/auth/login",
-        serde_json::json!({ "email": ADMIN_EMAIL, "password": context.administrator_password }),
+        serde_json::json!({ "email": ADMIN_EMAIL, "password": ADMIN_PASSWORD }),
     )
     .await;
     let reused_recovery_challenge = response_json(reused_recovery_login).await;
@@ -209,7 +209,7 @@ pub async fn verify_administrator_sessions_and_permissions(
     let third_login_response = send_json(
         app.clone(),
         "/api/v1/admin/auth/login",
-        serde_json::json!({ "email": ADMIN_EMAIL, "password": context.administrator_password }),
+        serde_json::json!({ "email": ADMIN_EMAIL, "password": ADMIN_PASSWORD }),
     )
     .await;
     let third_login_json = response_json(third_login_response).await;
@@ -303,7 +303,7 @@ pub async fn verify_administrator_sessions_and_permissions(
     let login_during_mfa_lock = send_json(
         app.clone(),
         "/api/v1/admin/auth/login",
-        serde_json::json!({ "email": ADMIN_EMAIL, "password": context.administrator_password }),
+        serde_json::json!({ "email": ADMIN_EMAIL, "password": ADMIN_PASSWORD }),
     )
     .await;
     assert_eq!(login_during_mfa_lock.status(), StatusCode::UNAUTHORIZED);

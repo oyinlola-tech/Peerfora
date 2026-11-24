@@ -1,8 +1,9 @@
 use super::support::*;
 use axum::http::{StatusCode, header};
 
+const ROTATED_ADMINISTRATOR_PASSWORD: &str = "peerfora-admin-password-after-rotation";
+
 pub async fn verify_administrator_password_change(context: &TestContext) {
-    let rotated_administrator_password = create_test_password();
     let cookie = create_fresh_administrator_session(context).await;
     let route = peerfora_api::constants::admin_auth::ADMIN_AUTH_PASSWORD_CHANGE_ROUTE;
     let unchanged_password = send_request(
@@ -12,8 +13,8 @@ pub async fn verify_administrator_password_change(context: &TestContext) {
         Some(&cookie),
         Some(
             serde_json::json!({
-                "currentPassword": context.administrator_password,
-                "newPassword": context.administrator_password
+                "currentPassword": ADMIN_PASSWORD,
+                "newPassword": ADMIN_PASSWORD
             })
             .to_string(),
         ),
@@ -28,8 +29,8 @@ pub async fn verify_administrator_password_change(context: &TestContext) {
         Some(&cookie),
         Some(
             serde_json::json!({
-                "currentPassword": create_test_password(),
-                "newPassword": rotated_administrator_password
+                "currentPassword": "incorrect-administrator-password",
+                "newPassword": ROTATED_ADMINISTRATOR_PASSWORD
             })
             .to_string(),
         ),
@@ -58,8 +59,8 @@ pub async fn verify_administrator_password_change(context: &TestContext) {
         Some(&cookie),
         Some(
             serde_json::json!({
-                "currentPassword": context.administrator_password,
-                "newPassword": rotated_administrator_password
+                "currentPassword": ADMIN_PASSWORD,
+                "newPassword": ROTATED_ADMINISTRATOR_PASSWORD
             })
             .to_string(),
         ),
@@ -91,7 +92,7 @@ pub async fn verify_administrator_password_change(context: &TestContext) {
     let old_password_login = send_json(
         context.app.clone(),
         peerfora_api::constants::admin_auth::ADMIN_AUTH_LOGIN_ROUTE,
-        serde_json::json!({ "email": ADMIN_EMAIL, "password": context.administrator_password }),
+        serde_json::json!({ "email": ADMIN_EMAIL, "password": ADMIN_PASSWORD }),
     )
     .await;
     assert_eq!(old_password_login.status(), StatusCode::UNAUTHORIZED);
@@ -100,7 +101,7 @@ pub async fn verify_administrator_password_change(context: &TestContext) {
         peerfora_api::constants::admin_auth::ADMIN_AUTH_LOGIN_ROUTE,
         serde_json::json!({
             "email": ADMIN_EMAIL,
-            "password": rotated_administrator_password
+            "password": ROTATED_ADMINISTRATOR_PASSWORD
         }),
     )
     .await;

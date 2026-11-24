@@ -9,6 +9,7 @@ pub mod directory_errors;
 pub mod discussion_errors;
 pub mod knowledge_errors;
 pub mod moderation_errors;
+pub mod phase_four_errors;
 pub mod profile_errors;
 pub mod request_origin_errors;
 pub mod request_timeout_errors;

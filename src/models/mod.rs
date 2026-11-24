@@ -7,6 +7,7 @@ pub mod admin_role;
 pub mod agent_credential;
 pub mod agent_identity;
 pub mod app_state;
+pub mod communication;
 pub mod community;
 pub mod developer;
 pub mod discussion;

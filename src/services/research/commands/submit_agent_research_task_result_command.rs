@@ -38,8 +38,8 @@ fn validate_agent_research_sources(
     if sources.is_empty() || sources.len() > MAX_RESEARCH_TASK_SOURCE_REFERENCES {
         return Err(ResearchTaskError::SourceReferencesInvalid.into());
     }
-    let mut validated_sources = Vec::with_capacity(MAX_RESEARCH_TASK_SOURCE_REFERENCES);
-    let mut source_urls = HashSet::with_capacity(MAX_RESEARCH_TASK_SOURCE_REFERENCES);
+    let mut validated_sources = Vec::with_capacity(sources.len());
+    let mut source_urls = HashSet::with_capacity(sources.len());
     for source in sources {
         let title = source.title.trim();
         let url = source.url.trim();

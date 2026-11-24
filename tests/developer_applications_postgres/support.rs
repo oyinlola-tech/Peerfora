@@ -80,6 +80,7 @@ pub fn test_app_state_with_email_sender(
         smtp_username: None,
         smtp_password: None,
         smtp_from: None,
+        media_storage_base_path: "./target/phase-four-test-media".to_owned(),
         public_url: TEST_ORIGIN.to_owned(),
         google_oidc: None,
         apple_oidc: None,

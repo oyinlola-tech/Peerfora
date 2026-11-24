@@ -166,6 +166,43 @@ This document describes every route currently registered by the API. It is based
 | `GET` | `/api/v1/admin/reports` | List reports with `reports.read` permission |
 | `POST` | `/api/v1/admin/reports/{report_id}/assign` | Assign a report to an authorized reviewer with `reports.resolve` permission |
 | `POST` | `/api/v1/admin/reports/{report_id}/resolve` | Resolve or dismiss a report with `reports.resolve` permission |
+| `PUT` | `/api/v1/admin/media/{id}/review` | Quarantine or release a media object with `media.quarantine` permission |
+| `POST` | `/api/v1/admin/communication/{conversation_id}/restrict` | Restrict a conversation with `messaging.enforcement.manage` permission |
+| `POST` | `/api/v1/admin/communication/{conversation_id}/close` | Close a conversation with `messaging.enforcement.manage` permission |
+| `GET` | `/api/v1/notifications` | List the authenticated account's notifications |
+| `GET` | `/api/v1/notifications/unread-count` | Count unread notifications for the authenticated account |
+| `POST` | `/api/v1/notifications/read-all` | Mark all notifications read for the authenticated account |
+| `PATCH` | `/api/v1/notifications/{id}/read` | Mark one notification read |
+| `GET` | `/api/v1/notification-preferences` | Read notification preferences |
+| `PUT` | `/api/v1/notification-preferences` | Update notification preferences |
+| `GET` | `/api/v1/conversations` | List conversations visible to the authenticated account |
+| `POST` | `/api/v1/conversations` | Create a conversation |
+| `GET` | `/api/v1/conversations/{id}` | Read a conversation the account is a member of |
+| `PATCH` | `/api/v1/conversations/{id}` | Update a conversation title |
+| `GET` | `/api/v1/conversations/{id}/members` | List active conversation members |
+| `POST` | `/api/v1/conversations/{id}/members` | Add members to a conversation |
+| `DELETE` | `/api/v1/conversations/{id}/members/{account_id}` | Remove a member from a conversation |
+| `POST` | `/api/v1/conversations/{id}/reports` | Report a conversation |
+| `GET` | `/api/v1/conversations/{id}/messages` | List messages in a conversation |
+| `POST` | `/api/v1/conversations/{id}/messages` | Send a message to a conversation |
+| `GET` | `/api/v1/messages/{id}` | Read a message the account can access |
+| `PATCH` | `/api/v1/messages/{id}/read` | Mark a message read |
+| `POST` | `/api/v1/messages/{id}/reports` | Report a message |
+| `GET` | `/api/v1/devices/push` | List the account's device push tokens |
+| `POST` | `/api/v1/devices/push` | Register a device push token |
+| `GET` | `/api/v1/devices/push/{id}` | Read a device push token |
+| `PUT` | `/api/v1/devices/push/{id}` | Update a device push token |
+| `POST` | `/api/v1/media/uploads` | Begin a media upload session |
+| `PUT` | `/api/v1/media/uploads/{id}/bytes` | Upload media bytes |
+| `PUT` | `/api/v1/media/uploads/{id}/complete` | Complete a media upload with a checksum |
+| `GET` | `/api/v1/media` | List media objects visible to the account |
+| `GET` | `/api/v1/media/{id}` | Read a media object |
+| `GET` | `/api/v1/media/{id}/download` | Download a media object |
+| `POST` | `/api/v1/media/{id}/reports` | Report a media object |
+| `GET` | `/api/v1/realtime` | Server-sent events stream |
+| `GET` | `/api/v1/realtime/ws` | WebSocket realtime stream |
+
+The Phase Four routes above are written but not compiled in this checkout; see [status.md](status.md) for the verification state.
 
 ## `GET /health`
 
