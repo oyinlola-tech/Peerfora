@@ -1,5 +1,8 @@
 name: Android build
 
+permissions:
+  contents: read
+
 on:
   push:
     paths:
@@ -20,6 +23,8 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
       - run: sdkmanager "platforms;android-37" "build-tools;36.0.0"
       - run: ./gradlew :app:assembleDebug
         working-directory: apps/android
