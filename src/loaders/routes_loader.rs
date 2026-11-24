@@ -10,9 +10,6 @@ pub fn register_routes(app: Router<AppState>, state: AppState) -> Router<AppStat
             state.clone(),
         ))
         .merge(routes::admin_community_routes::build_routes(state.clone()))
-        .merge(routes::admin_communication_routes::build_routes(
-            state.clone(),
-        ))
         .merge(routes::admin_moderation_routes::build_routes(state.clone()))
         .merge(routes::admin_developer_routes::build_routes(state.clone()))
         .merge(routes::admin_agent_routes::build_routes(state.clone()))
@@ -29,9 +26,6 @@ pub fn register_routes(app: Router<AppState>, state: AppState) -> Router<AppStat
         .merge(routes::developer_routes::build_routes())
         .merge(routes::developer_api_routes::build_routes(state.clone()))
         .merge(routes::moderation_routes::build_routes())
-        .merge(routes::communication_routes::build_routes())
-        .merge(routes::media_routes::build_routes())
-        .merge(routes::realtime_routes::build_routes())
         .merge(routes::profile_routes::build_routes())
         .merge(routes::research_routes::build_routes())
         .merge(routes::knowledge_routes::build_routes())

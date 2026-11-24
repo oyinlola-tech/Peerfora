@@ -4,7 +4,9 @@ mod support;
 use axum::http::StatusCode;
 use peerfora_api::{app::build_app, database::connect_database};
 use serde_json::json;
-use support::{create_account_fixture, response_json, send_json_request, test_app_state};
+use support::{
+    create_account_fixture, phase_four_test_app, response_json, send_json_request, test_app_state,
+};
 use uuid::Uuid;
 
 #[tokio::test]
@@ -18,7 +20,18 @@ async fn phase_four_communication_is_member_scoped_and_durable() {
     let owner = create_account_fixture(&database, "phase4_owner").await;
     let member = create_account_fixture(&database, "phase4_member").await;
     let outsider = create_account_fixture(&database, "phase4_outsider").await;
-    let app = build_app(test_app_state(database.clone(), database_url.clone()));
+    let state = test_app_state(database.clone(), database_url.clone());
+    let production_app = build_app(state.clone());
+    let disabled_route = send_json_request(
+        &production_app,
+        "GET",
+        "/api/v1/conversations",
+        &owner.session_token,
+        json!({}),
+    )
+    .await;
+    assert_eq!(disabled_route.status(), StatusCode::NOT_FOUND);
+    let app = phase_four_test_app(state);
 
     let preferences = send_json_request(
         &app,
@@ -125,6 +138,10 @@ async fn phase_four_communication_is_member_scoped_and_durable() {
     assert_eq!(notifications.status(), StatusCode::OK);
     let notification_page = response_json(notifications).await;
     assert!(notification_page["totalCount"].as_i64().unwrap() >= 1);
+    let notification_body = notification_page["notifications"][0]["body"]
+        .as_str()
+        .expect("notification body should be present");
+    assert!(!notification_body.contains("private phase four message"));
 
     let unread = send_json_request(
         &app,
@@ -235,4 +252,95 @@ async fn phase_four_communication_is_member_scoped_and_durable() {
     )
     .await;
     assert_eq!(message_report.status(), StatusCode::CREATED);
+}
+
+#[tokio::test]
+async fn research_project_conversations_reject_nonmembers() {
+    let Ok(database_url) = std::env::var("PEERFORA_TEST_DATABASE_URL") else {
+        return;
+    };
+    let database = connect_database(&database_url)
+        .await
+        .expect("the disposable PostgreSQL database should migrate");
+    let owner = create_account_fixture(&database, "phase4_research_owner").await;
+    let member = create_account_fixture(&database, "phase4_research_member").await;
+    let outsider = create_account_fixture(&database, "phase4_research_outsider").await;
+    let owner_actor_id: Uuid =
+        sqlx::query_scalar("SELECT actor_id FROM human_actor_identities WHERE account_id = $1")
+            .bind(owner.account_id)
+            .fetch_one(&database)
+            .await
+            .expect("project owner human identity should exist");
+    let member_actor_id: Uuid =
+        sqlx::query_scalar("SELECT actor_id FROM human_actor_identities WHERE account_id = $1")
+            .bind(member.account_id)
+            .fetch_one(&database)
+            .await
+            .expect("project member human identity should exist");
+    let mut project_transaction = database
+        .begin()
+        .await
+        .expect("project transaction should begin");
+    let project_id: Uuid = sqlx::query_scalar(
+        "INSERT INTO research_projects (owner_actor_id, title) \
+         VALUES ($1, 'Phase four private project') RETURNING id",
+    )
+    .bind(owner_actor_id)
+    .fetch_one(&mut *project_transaction)
+    .await
+    .expect("private research project should be created");
+    sqlx::query(
+        "INSERT INTO research_project_members \
+         (project_id, actor_id, member_role, membership_status, joined_at) \
+         VALUES ($1, $2, 'owner', 'active', now()), \
+                ($1, $3, 'researcher', 'active', now())",
+    )
+    .bind(project_id)
+    .bind(owner_actor_id)
+    .bind(member_actor_id)
+    .execute(&mut *project_transaction)
+    .await
+    .expect("project memberships should be created");
+    project_transaction
+        .commit()
+        .await
+        .expect("project and memberships should commit");
+
+    let app = phase_four_test_app(test_app_state(database.clone(), database_url));
+    let member_conversation = send_json_request(
+        &app,
+        "POST",
+        "/api/v1/conversations",
+        &owner.session_token,
+        json!({
+            "conversationType": "research_project",
+            "researchProjectId": project_id,
+            "title": "Project members only",
+            "memberAccountIds": [member.account_id]
+        }),
+    )
+    .await;
+    assert_eq!(member_conversation.status(), StatusCode::CREATED);
+
+    let outsider_conversation = send_json_request(
+        &app,
+        "POST",
+        "/api/v1/conversations",
+        &owner.session_token,
+        json!({
+            "conversationType": "research_project",
+            "researchProjectId": project_id,
+            "title": "Must not include outsider",
+            "memberAccountIds": [outsider.account_id]
+        }),
+    )
+    .await;
+    assert_ne!(outsider_conversation.status(), StatusCode::CREATED);
+    let conversation_count: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM conversations WHERE research_project_id = $1")
+            .bind(project_id)
+            .fetch_one(&database)
+            .await
+            .expect("project conversation count should be readable");
+    assert_eq!(conversation_count, 1);
 }

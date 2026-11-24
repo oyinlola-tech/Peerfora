@@ -7,6 +7,7 @@ use crate::{
         NOTIFICATION_MAX_PAGE_OFFSET, NOTIFICATION_MAX_PAGE_SIZE,
         NOTIFICATION_MAX_RESOURCE_TYPE_LENGTH, NOTIFICATION_MAX_TITLE_LENGTH,
     },
+    enums::communication::MembershipStatus,
     enums::phase_four::CommunicationError,
     errors::app_error::AppError,
     models::communication::NotificationPage,
@@ -52,6 +53,24 @@ pub async fn create_notification(
     .bind(resource_type)
     .bind(resource_id)
     .fetch_one(pool)
+    .await
+    .map_err(|_| AppError::Internal)
+}
+
+pub async fn list_notification_recipients(
+    pool: &PgPool,
+    conversation_id: Uuid,
+    sender_account_id: Uuid,
+) -> Result<Vec<Uuid>, AppError> {
+    let active_membership = MembershipStatus::Active.as_db_value();
+    sqlx::query_scalar::<_, Uuid>(
+        "SELECT account_id FROM conversation_members \
+         WHERE conversation_id = $1 AND membership_status = $2 AND account_id <> $3",
+    )
+    .bind(conversation_id)
+    .bind(active_membership)
+    .bind(sender_account_id)
+    .fetch_all(pool)
     .await
     .map_err(|_| AppError::Internal)
 }

@@ -16,28 +16,28 @@ The product requirements document defines six connected experiences: Communities
 - `blocked`: local formatting, metadata without dependencies, source line limits and `git diff --check` passed; Cargo check/test/Clippy cannot resolve uncached `aes-gcm` because crates.io is inaccessible. Docker, cargo-audit/deny, full native/WASM builds and real SMTP/OIDC are unavailable. Metadata and YAML parsing do not establish builds.
 - `not_implemented`: the mandatory ecosystem scenario cannot run: community voting, research invitation email, institution claims/representatives, and durable email retry are absent. Model execution/training/marketplace, final frontend design and production deployment remain deferred.
 
-## Phase Four communication — implemented_unverified
+## Phase Four communication — implemented but disabled
 
-The Phase Four communication surface is written end-to-end but **not compiled**: the local environment cannot resolve the Rust dependency index (crates.io is unreachable, so `cargo check`, `clippy`, and the integration test cannot run). SQL-level behavior is validated against a disposable PostgreSQL 17.11 instance.
+Phase Four code and migration `202611130039_create_phase_four_communication.sql` exist, but the endpoints and workers are deliberately not registered in the production app. The master specification requires messaging to stay disabled until its safety requirements and tests are satisfied. The current implementation is not ready to satisfy that gate.
 
-- `implemented_unverified`: notification inbox (list/unread-count/read/read-all/preferences), conversations (create/list/get/update, member list/add/remove, lifecycle), messages (list/send/get/mark-read), device push tokens (list/get/register/update), and media (initiate upload / stream bytes / complete with checksum / list / get / download / report) with local-file storage.
-- `implemented_unverified`: membership-scoped authorization at the repository layer — conversation access, message send, restricted-conversation filtering, media ownership, and device-token ownership all reject non-members.
-- `implemented_unverified`: realtime hub with SSE (`/api/v1/realtime`) and WebSocket (`/api/v1/realtime/ws`) plus per-account event cursors.
-- `implemented_unverified`: durable email delivery — message send enqueues encrypted per-recipient `email_delivery_outbox` rows; the background worker claims, decrypts, and sends them with attempts and processing states.
-- `implemented_unverified`: admin enforcement — conversation restrict/close and media quarantine/release for trust-and-safety roles.
-- `implemented_unverified`: moderation reporting extended to conversation, message, and media targets with the `moderation_reports` CHECK updated to accept the three new target columns.
-- `sql_validated`: migration `202611130039_create_phase_four_communication.sql` applies cleanly forward (40 migrations) and on upgrade; a 13-check SQL suite passes against PostgreSQL 17.11 (`/tmp/peerfora-phase4/reset-and-test.mjs`), covering notification prefs/create, conversation create+member join, message send + membership authorization, restricted-conversation list filtering, media upload lifecycle + checksum, media quarantine/release, device push register/revoke, email outbox claim/complete, realtime cursor upsert, and admin/conversation/message moderation reports.
-- `blocked`: the Rust crate does not compile locally, so no Cargo check, Clippy, or the `tests/phase_four_communication_postgres.rs` integration test has executed. The exact seeded admin permission keys for `media.quarantine` and `messaging.enforcement.manage` require confirmation against the permission catalogue.
+- `implemented_unverified`: notification inbox, conversations, messages, device push tokens, media upload/download, realtime, and administrator communication enforcement exist in source. They are reachable only from the isolated Phase Four integration-test router; they are not production API endpoints.
+- `implemented_unverified`: repository membership checks scope project conversations to active project members, and message notifications use generic text instead of copying private message contents. A regression test rejects non-members and checks notification-body privacy.
+- `sql_validated`: migration applies on a fresh PostgreSQL 17.12 test database, and the focused communication integration suite passed 2/2 after the latest local changes. `cargo check --offline --locked --all-targets`, `git diff --check`, and the 400-line source limit check passed in the same isolated worktree. These results do not establish full repository CI or production readiness.
+- `blocked`: direct messaging still lacks message requests, user-facing block/privacy controls, and abuse protections. No live push provider or delivery validation is configured.
+- `blocked`: media processing has no signature validation or malware-scanning integration. The local-file adapter is not the S3-compatible storage design specified for production, so media must remain disabled.
+- `blocked`: iOS, Android, web, and desktop checks failed on PR #5's remote head; CodeQL also reports three hard-coded test values, an uncontrolled allocation, and missing API workflow permissions. Local isolated fixes are not yet on the PR branch or covered by a fresh remote run.
+
+Do not enable Phase Four routes or workers until its safety, media, provider, and verification requirements are met. The API endpoint reference lists only routes registered by the production application.
 
 ## Phase Four dependency readiness
 
 | Dependency | Classification | Evidence or blocker |
 | --- | --- | --- |
-| Shared notification infrastructure | not implemented | No inbox, delivery orchestration, or preference enforcement |
-| Email rendering and delivery | partially implemented | Local HTML/plain-text, provisional theme and example preview unverified in full app; delivery remains synchronous, encrypted payload and retries missing |
+| Shared notification infrastructure | partially implemented | Source exists but Phase Four endpoints and workers are disabled |
+| Email rendering and delivery | partially implemented | Account mail is separate; Phase Four messaging delivery worker is disabled and provider behavior is unverified |
 | Domain events | partially implemented | Some community outbox events; versioned contracts and ecosystem coverage incomplete |
 | Transactional outbox | partially implemented | Community events recorded; no processing worker or encrypted secret storage |
-| Durable background jobs | not implemented | Existing job only cleans expired authentication records |
+| Durable background jobs | partially implemented | Account cleanup is active; Phase Four email and media workers are disabled pending safety and provider readiness |
 | Authentication | implemented but unverified | Merged PR recovery passed API CI; local static form and email edits require a new full run and CodeQL |
 | Authorization | partially implemented | Base has resource-scoped controls; comprehensive cross-product adversarial review remains |
 | Actor model | partially implemented | Typed human, agent and institution identities exist; complete participation policies do not |
@@ -46,11 +46,11 @@ The Phase Four communication surface is written end-to-end but **not compiled**:
 | Agent permissions | partially implemented | Scoped credentials and review exist; full cross-product scenario not run |
 | Developer scopes | partially implemented | Scoped subject search exists; broader API coverage and SDK remain |
 | Institutional permissions | not implemented | Directory search is not claim or representative authorization |
-| Object-storage foundations | requires a design decision | Local mock only; upload authorization, scanning and retention unresolved |
+| Object-storage foundations | requires a design decision | Local adapter only; content-signature validation, scanning, and retention remain unresolved |
 | Privacy requirements | requires a design decision | Export/deletion, evidence retention, access and legal policy unresolved |
 | Moderation foundations | partially implemented | Report intake/review exists; enforcement and appeals do not |
 
-Phase Four is blocked. Next: restore access to Rust dependencies, verify the lockfile, run the complete Cargo and fresh/upgrade SQLx PostgreSQL suites and a fresh CodeQL scan. Verify the form against the real server and scanners, and the templates in email clients. Design and test an encrypted expiring email payload, outbox worker and retry behavior; then complete the missing institutional and community foundations and execute the specified acceptance scenario. Do not claim deployment or production readiness.
+Phase Four is blocked. Next: implement message-request, blocking, privacy, and abuse controls; add media signature validation and a malware-scanning integration boundary with approved object storage; configure and exercise delivery providers; run the complete Cargo and fresh/upgrade SQLx PostgreSQL suites and a fresh CodeQL scan; complete the missing institutional and community foundations; and execute the specified acceptance scenario. Do not claim deployment or production readiness.
 
 ## Implemented slices
 

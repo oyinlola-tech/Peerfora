@@ -5,9 +5,7 @@ use crate::{
     constants::phase_four::{
         NOTIFICATION_RESOURCE_TYPE_CONVERSATION, OUTBOX_AGGREGATE_TYPE_NOTIFICATION,
     },
-    enums::communication::{
-        MembershipStatus, NotificationCategory, NotificationEventType, RealtimeEventType,
-    },
+    enums::communication::{NotificationCategory, NotificationEventType, RealtimeEventType},
     errors::app_error::AppError,
     repositories::communication_repository::{notification_repository, outbox_repository},
     services::notifications::commands::create_notification_command,
@@ -85,17 +83,8 @@ pub async fn notification_recipients(
     conversation_id: Uuid,
     sender_account_id: Uuid,
 ) -> Result<Vec<Uuid>, AppError> {
-    let active_membership = MembershipStatus::Active.as_db_value();
-    sqlx::query_scalar::<_, Uuid>(
-        "SELECT account_id FROM conversation_members \
-         WHERE conversation_id = $1 AND membership_status = $2 AND account_id <> $3",
-    )
-    .bind(conversation_id)
-    .bind(active_membership)
-    .bind(sender_account_id)
-    .fetch_all(pool)
-    .await
-    .map_err(|_| AppError::Internal)
+    notification_repository::list_notification_recipients(pool, conversation_id, sender_account_id)
+        .await
 }
 
 /// Enqueues an encrypted email delivery intent for a notification. The

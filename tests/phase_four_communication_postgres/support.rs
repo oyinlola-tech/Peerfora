@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use axum::http::HeaderValue;
-use peerfora_api::{configs::settings::Settings, models::app_state::AppState};
+use axum::{Router, http::HeaderValue};
+use peerfora_api::{configs::settings::Settings, models::app_state::AppState, routes};
 use serde_json::Value;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -81,6 +81,17 @@ pub fn test_app_state(database: PgPool, database_url: String) -> AppState {
         apple_oidc: None,
     };
     AppState::from_settings(database, &settings, None)
+}
+
+pub fn phase_four_test_app(state: AppState) -> Router {
+    Router::new()
+        .merge(routes::admin_communication_routes::build_routes(
+            state.clone(),
+        ))
+        .merge(routes::communication_routes::build_routes())
+        .merge(routes::media_routes::build_routes())
+        .merge(routes::realtime_routes::build_routes())
+        .with_state(state)
 }
 
 pub async fn send_json_request(

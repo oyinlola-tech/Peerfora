@@ -66,8 +66,9 @@ pub async fn create_conversation(
                 "SELECT EXISTS (\
                     SELECT 1 FROM research_projects project \
                     JOIN human_actor_identities actor ON actor.account_id = $1 \
+                    JOIN accounts account ON account.id = actor.account_id \
                     WHERE project.id = $2 AND project.project_status = $3 \
-                        AND actor.actor_status = $4 \
+                        AND account.account_status = $4 \
                         AND EXISTS (\
                             SELECT 1 FROM research_project_members member \
                             WHERE member.project_id = project.id AND member.actor_id = actor.actor_id \
@@ -109,17 +110,19 @@ pub async fn create_conversation(
         conversation_id,
         &[actor_account_id],
         member_account_ids,
+        project_membership,
     )
     .await?;
     transaction.commit().await.map_err(|_| AppError::Internal)?;
     Ok(conversation_id)
 }
 
-async fn add_conversation_members(
+pub(super) async fn add_conversation_members(
     transaction: &mut Transaction<'_, Postgres>,
     conversation_id: Uuid,
     initial_account_ids: &[Uuid],
     additional_account_ids: &[Uuid],
+    research_project_id: Option<Uuid>,
 ) -> Result<(), AppError> {
     let active_membership = MembershipStatus::Active.as_db_value();
     let owner_role = ConversationMemberRole::Owner.as_db_value();
@@ -146,12 +149,39 @@ async fn add_conversation_members(
         return Ok(());
     }
     let result = sqlx::query(
-        "INSERT INTO conversation_members (conversation_id, account_id, membership_status) SELECT $1, account.id, $3 FROM accounts account WHERE account.id = ANY($2::UUID[]) AND account.account_status = $4 AND NOT EXISTS (SELECT 1 FROM user_blocks block WHERE block.blocker_account_id = account.id OR block.blocked_account_id = account.id) ON CONFLICT DO NOTHING RETURNING account_id",
+        "INSERT INTO conversation_members (conversation_id, account_id, membership_status) \
+         SELECT $1, account.id, $3 FROM accounts account \
+         WHERE account.id = ANY($2::UUID[]) AND account.account_status = $4 \
+         AND NOT EXISTS ( \
+             SELECT 1 FROM user_blocks block \
+             WHERE (block.blocker_account_id = account.id \
+                    AND block.blocked_account_id = ANY($2::UUID[])) \
+                OR (block.blocked_account_id = account.id \
+                    AND block.blocker_account_id = ANY($2::UUID[])) \
+                OR EXISTS ( \
+                    SELECT 1 FROM conversation_members existing \
+                    WHERE existing.conversation_id = $1 \
+                      AND existing.membership_status = $5 \
+                      AND ((block.blocker_account_id = existing.account_id \
+                            AND block.blocked_account_id = account.id) \
+                        OR (block.blocked_account_id = existing.account_id \
+                            AND block.blocker_account_id = account.id)) \
+                ) \
+         ) \
+         AND ($6::UUID IS NULL OR EXISTS ( \
+             SELECT 1 FROM human_actor_identities actor \
+             JOIN research_project_members project_member ON project_member.actor_id = actor.actor_id \
+             WHERE actor.account_id = account.id AND account.account_status = $4 \
+               AND project_member.project_id = $6 AND project_member.membership_status = $5 \
+         )) \
+         ON CONFLICT DO NOTHING RETURNING account_id",
     )
     .bind(conversation_id)
     .bind(additional_account_ids)
     .bind(active_membership)
     .bind(active_account)
+    .bind(active_membership)
+    .bind(research_project_id)
     .fetch_all(&mut **transaction)
     .await
     .map_err(|_| AppError::Internal)?;
@@ -302,36 +332,7 @@ pub async fn list_members(
     .map_err(|_| AppError::Internal)
 }
 
-pub async fn require_active_membership(
-    pool: &PgPool,
-    account_id: Uuid,
-    conversation_id: Uuid,
-) -> Result<(), AppError> {
-    let active_membership = MembershipStatus::Active.as_db_value();
-    let active_lifecycle = ConversationLifecycleStatus::Active.as_db_value();
-    let archived_lifecycle = ConversationLifecycleStatus::Archived.as_db_value();
-    let permitted: bool = sqlx::query_scalar(
-        "SELECT EXISTS (\
-            SELECT 1 FROM conversations conversation \
-            JOIN conversation_members membership ON membership.conversation_id = conversation.id \
-                AND membership.account_id = $1 AND membership.membership_status = $2 \
-            WHERE conversation.id = $3 AND conversation.lifecycle_status IN ($4, $5)\
-        )",
-    )
-    .bind(account_id)
-    .bind(active_membership)
-    .bind(conversation_id)
-    .bind(active_lifecycle)
-    .bind(archived_lifecycle)
-    .fetch_one(pool)
-    .await
-    .map_err(|_| AppError::Internal)?;
-    if permitted {
-        Ok(())
-    } else {
-        Err(CommunicationError::ConversationMembershipDenied.into())
-    }
-}
+pub use super::conversation_membership_repository::require_active_membership;
 
 pub async fn set_lifecycle_status(
     pool: &PgPool,
