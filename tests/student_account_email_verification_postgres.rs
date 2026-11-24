@@ -67,6 +67,7 @@ fn app_state(pool: PgPool, database_url: String, sender: Option<Arc<dyn EmailSen
         smtp_username: None,
         smtp_password: None,
         smtp_from: None,
+        media_storage_base_path: "./target/phase-four-test-media".to_owned(),
         public_url: "https://peerfora.example.test".to_owned(),
         google_oidc: None,
         apple_oidc: None,

@@ -189,7 +189,7 @@ pub fn render_email(
         .and_then(|template| template.render(ctx))
         .map_err(|_| AppError::Internal)?;
     Ok(EmailMessage {
-        subject,
+        subject: subject.to_owned(),
         plain_text,
         html,
     })

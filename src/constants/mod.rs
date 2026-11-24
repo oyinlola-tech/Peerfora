@@ -11,6 +11,7 @@ pub mod institutions;
 pub mod knowledge;
 pub mod moderation;
 pub mod one_time_token;
+pub mod phase_four;
 pub mod profiles;
 pub mod research;
 pub mod runtime_settings;

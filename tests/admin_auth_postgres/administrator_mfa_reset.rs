@@ -33,7 +33,7 @@ pub async fn verify_administrator_mfa_reset(context: &TestContext) {
     assert_target_sessions_were_revoked(context, target_id).await;
     assert_target_challenges_and_codes_were_revoked(context, target_id).await;
     assert_mfa_reset_was_audited(context, target_id).await;
-    assert_fresh_totp_enrollment_is_required(context, target_id).await;
+    assert_fresh_totp_enrollment_is_required(context, target_id, &target_password).await;
 
     let self_reset_route = peerfora_api::constants::admin_auth::ADMINISTRATOR_MFA_RESET_ROUTE
         .replace("{id}", &context.administrator_id.to_string());
@@ -48,16 +48,12 @@ pub async fn verify_administrator_mfa_reset(context: &TestContext) {
     assert_eq!(self_reset_response.status(), StatusCode::CONFLICT);
 }
 
-async fn create_target_administrator(
-    context: &TestContext,
-    target_password: &str,
-) -> uuid::Uuid {
+async fn create_target_administrator(context: &TestContext, target_password: &str) -> uuid::Uuid {
     let target_id = uuid::Uuid::new_v4();
-    let password_hash = peerfora_api::utils::password::create_password_hash(
-        target_password.to_owned(),
-    )
-    .await
-    .expect("target administrator password hash");
+    let password_hash =
+        peerfora_api::utils::password::create_password_hash(target_password.to_owned())
+            .await
+            .expect("target administrator password hash");
     sqlx::query(
         "INSERT INTO administrators
             (id, email, password_hash, mfa_secret_ciphertext, mfa_enabled_at,
@@ -146,7 +142,11 @@ async fn assert_target_mfa_was_cleared(context: &TestContext, target_id: uuid::U
     assert!(state.locked_until.is_none());
 }
 
-async fn assert_fresh_totp_enrollment_is_required(context: &TestContext, target_id: uuid::Uuid) {
+async fn assert_fresh_totp_enrollment_is_required(
+    context: &TestContext,
+    target_id: uuid::Uuid,
+    target_password: &str,
+) {
     let login = send_json(
         context.app.clone(),
         peerfora_api::constants::admin_auth::ADMIN_AUTH_LOGIN_ROUTE,

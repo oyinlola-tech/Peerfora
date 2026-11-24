@@ -166,7 +166,6 @@ This document describes every route currently registered by the API. It is based
 | `GET` | `/api/v1/admin/reports` | List reports with `reports.read` permission |
 | `POST` | `/api/v1/admin/reports/{report_id}/assign` | Assign a report to an authorized reviewer with `reports.resolve` permission |
 | `POST` | `/api/v1/admin/reports/{report_id}/resolve` | Resolve or dismiss a report with `reports.resolve` permission |
-
 ## `GET /health`
 
 No authentication, query parameters, or request body are required.

@@ -12,20 +12,32 @@ The product requirements document defines six connected experiences: Communities
 - `partial`: account reset issuance and consumption serialize with suspension and concurrent resets; login rechecks the verified password hash and eligibility. Forward migration 038 indexes reset tokens. The merged PR-head Rust regression and PostgreSQL suites passed. Prior direct disposable PostgreSQL 17.11 SQL checks applied 39 migration files fresh and migration 038 to an upgrade fixture and exercised reset/session races; they were not SQLx migration tests.
 - `implemented_unverified`: verification GET now returns static HTML without interpolating the query token, addressing the CodeQL-flagged sink locally. POST accepts the current URL's token query with an empty form body or the existing form-body token; conflicting values are rejected. A disposable Chromium test served the exact static HTML under the same CSP and confirmed that clicking submits the query by POST with an empty form and no token in the HTML. This was not a Rust server or database test. New regression tests are not yet run, and a fresh CodeQL run is required. GET no longer consumes tokens; form-submitting scanners remain a risk. Reverse proxies must redact token-bearing query strings in logs.
 - `implemented_unverified`: local changes use MiniJinja for HTML/plain-text templates for the five existing flows, a typed template enum, strict undefined values, HTML autoescaping, fixed trusted-origin links, an English fallback, a validated provisional neutral theme, example-only offline preview, a unit-test recording sender, and SMTP multipart alternatives. Isolated tests exercised the actual renderer and templates with stubbed theme/constants; the full application, real theme parser, SMTP and integration tests have not run since these edits. The manually updated lockfile still needs verification with Cargo and registry access.
-- `implemented_unverified`: local CodeQL follow-up changes replace fixed administrator test passwords and crypto keys with per-run random values, cap agent-source collection allocations at the configured 50-reference maximum, and declare `contents: read` in each GitHub Actions workflow. The verification-page XSS sink was already removed by PR #3. These follow-ups have not yet run through CI or a fresh CodeQL analysis. Alert #12 is considered a false positive: `hash_one_time_token` hashes 256-bit CSPRNG tokens for indexed lookup, never passwords; SHA-256 is appropriate for that input, unlike password hashing. Its CodeQL alert remains open pending a fresh scan or reviewed dismissal.
 - `blocked`: email delivery remains synchronous, with timing differences and no durable transactional delivery intent, encrypted expiring token payload, worker or retries. The existing community outbox is not an email queue. No live provider, email-client rendering, or external security review was exercised.
 - `blocked`: local formatting, metadata without dependencies, source line limits and `git diff --check` passed; Cargo check/test/Clippy cannot resolve uncached `aes-gcm` because crates.io is inaccessible. Docker, cargo-audit/deny, full native/WASM builds and real SMTP/OIDC are unavailable. Metadata and YAML parsing do not establish builds.
 - `not_implemented`: the mandatory ecosystem scenario cannot run: community voting, research invitation email, institution claims/representatives, and durable email retry are absent. Model execution/training/marketplace, final frontend design and production deployment remain deferred.
+
+## Phase Four communication — implemented but disabled
+
+Phase Four code and migration `202611130039_create_phase_four_communication.sql` exist, but the endpoints and workers are deliberately not registered in the production app. The master specification requires messaging to stay disabled until its safety requirements and tests are satisfied. The current implementation is not ready to satisfy that gate.
+
+- `implemented_unverified`: notification inbox, conversations, messages, device push tokens, media upload/download, realtime, and administrator communication enforcement exist in source. They are reachable only from the isolated Phase Four integration-test router; they are not production API endpoints.
+- `implemented_unverified`: repository membership checks scope project conversations to active project members, and message notifications use generic text instead of copying private message contents. A regression test rejects non-members and checks notification-body privacy.
+- `sql_validated`: migration applies on a fresh PostgreSQL 17.12 test database, and the focused communication integration suite passed 2/2 after the latest local changes. `cargo check --offline --locked --all-targets`, `git diff --check`, and the 400-line source limit check passed in the same isolated worktree. These results do not establish full repository CI or production readiness.
+- `blocked`: direct messaging still lacks message requests, user-facing block/privacy controls, and abuse protections. No live push provider or delivery validation is configured.
+- `blocked`: media processing has no signature validation or malware-scanning integration. The local-file adapter is not the S3-compatible storage design specified for production, so media must remain disabled.
+- `blocked`: iOS, Android, web, and desktop checks failed on PR #5's remote head; CodeQL also reports three hard-coded test values, an uncontrolled allocation, and missing API workflow permissions. Local isolated fixes are not yet on the PR branch or covered by a fresh remote run.
+
+Do not enable Phase Four routes or workers until its safety, media, provider, and verification requirements are met. The API endpoint reference lists only routes registered by the production application.
 
 ## Phase Four dependency readiness
 
 | Dependency | Classification | Evidence or blocker |
 | --- | --- | --- |
-| Shared notification infrastructure | not implemented | No inbox, delivery orchestration, or preference enforcement |
-| Email rendering and delivery | partially implemented | Local HTML/plain-text, provisional theme and example preview unverified in full app; delivery remains synchronous, encrypted payload and retries missing |
+| Shared notification infrastructure | partially implemented | Source exists but Phase Four endpoints and workers are disabled |
+| Email rendering and delivery | partially implemented | Account mail is separate; Phase Four messaging delivery worker is disabled and provider behavior is unverified |
 | Domain events | partially implemented | Some community outbox events; versioned contracts and ecosystem coverage incomplete |
 | Transactional outbox | partially implemented | Community events recorded; no processing worker or encrypted secret storage |
-| Durable background jobs | not implemented | Existing job only cleans expired authentication records |
+| Durable background jobs | partially implemented | Account cleanup is active; Phase Four email and media workers are disabled pending safety and provider readiness |
 | Authentication | implemented but unverified | Merged PR recovery passed API CI; local static form and email edits require a new full run and CodeQL |
 | Authorization | partially implemented | Base has resource-scoped controls; comprehensive cross-product adversarial review remains |
 | Actor model | partially implemented | Typed human, agent and institution identities exist; complete participation policies do not |
@@ -34,11 +46,11 @@ The product requirements document defines six connected experiences: Communities
 | Agent permissions | partially implemented | Scoped credentials and review exist; full cross-product scenario not run |
 | Developer scopes | partially implemented | Scoped subject search exists; broader API coverage and SDK remain |
 | Institutional permissions | not implemented | Directory search is not claim or representative authorization |
-| Object-storage foundations | requires a design decision | Local mock only; upload authorization, scanning and retention unresolved |
+| Object-storage foundations | requires a design decision | Local adapter only; content-signature validation, scanning, and retention remain unresolved |
 | Privacy requirements | requires a design decision | Export/deletion, evidence retention, access and legal policy unresolved |
 | Moderation foundations | partially implemented | Report intake/review exists; enforcement and appeals do not |
 
-Phase Four is blocked. Next: restore access to Rust dependencies, verify the lockfile, run the complete Cargo and fresh/upgrade SQLx PostgreSQL suites and a fresh CodeQL scan. Verify the form against the real server and scanners, and the templates in email clients. Design and test an encrypted expiring email payload, outbox worker and retry behavior; then complete the missing institutional and community foundations and execute the specified acceptance scenario. Do not claim deployment or production readiness.
+Phase Four is blocked. Next: implement message-request, blocking, privacy, and abuse controls; add media signature validation and a malware-scanning integration boundary with approved object storage; configure and exercise delivery providers; run the complete Cargo and fresh/upgrade SQLx PostgreSQL suites and a fresh CodeQL scan; complete the missing institutional and community foundations; and execute the specified acceptance scenario. Do not claim deployment or production readiness.
 
 ## Implemented slices
 

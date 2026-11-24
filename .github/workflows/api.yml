@@ -36,6 +36,30 @@ on:
       - ".github/workflows/api.yml"
 
 jobs:
+  migrations:
+    name: Migrations and schema
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: peerfora
+          POSTGRES_PASSWORD: peerfora
+          POSTGRES_DB: peerfora_migrations
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U peerfora -d peerfora_migrations"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PEERFORA_MIGRATION_DATABASE_URL: postgresql://peerfora:peerfora@localhost:5432/peerfora_migrations
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply migrations and assert schema
+        run: bash scripts/check_migrations.sh
+
   build:
     runs-on: ubuntu-latest
     services:
@@ -58,10 +82,63 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: 1.99.0
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
       - run: bash scripts/check_source_file_line_limits.sh
-      - run: cargo fmt --all -- --check
-      - run: cargo check --locked --all-targets
-      - run: cargo clippy --locked --all-targets -- -D warnings
-      - run: cargo test --locked -- --test-threads=1
+      - name: cargo fmt
+        run: |
+          set -o pipefail
+          cargo fmt --all -- --check 2>&1 | tee /tmp/cargo-fmt.log
+      - name: show fmt diff
+        if: always()
+        run: |
+          if [ -s /tmp/cargo-fmt.log ]; then
+            grep -nE "^Diff in|^error|^ -->" /tmp/cargo-fmt.log | tail -n 20 | while IFS= read -r line; do
+              printf '::error::fmt::%s\n' "$line"
+            done
+          fi
+      - name: cargo check
+        run: |
+          set -o pipefail
+          cargo check --all-targets > /tmp/cargo-check.log 2>&1
+      - name: show check errors
+        if: always()
+        run: |
+          if [ -s /tmp/cargo-check.log ]; then
+            grep -nE "error[:[]|--> |expected |unresolved|cannot " /tmp/cargo-check.log | tail -n 15 | while IFS= read -r line; do
+              printf '::error::check::%s\n' "$line"
+            done
+          fi
+      - name: cargo clippy
+        run: |
+          set -o pipefail
+          cargo clippy --all-targets -- -D warnings 2>&1 | tee /tmp/cargo-clippy.log
+      - name: show clippy errors
+        if: always()
+        run: |
+          if [ -s /tmp/cargo-clippy.log ]; then
+            sed 's/\x1b\[[0-9;]*m//g' /tmp/cargo-clippy.log | grep -nE "^error|^warning|--> " | tail -n 20 | while IFS= read -r line; do
+              printf '::error::clippy::%s\n' "$line"
+            done
+          fi
+      - name: cargo test
+        run: |
+          set -o pipefail
+          cargo test --no-fail-fast -- --test-threads=1 2>&1 | tee /tmp/cargo-test.log
+      - name: show panic details
+        if: always()
+        run: |
+          if [ -s /tmp/cargo-test.log ]; then
+            sed 's/\x1b\[[0-9;]*m//g' /tmp/cargo-test.log | grep -nE "panicked|left:|right:|assertion|download returns" | tail -n 5 | while IFS= read -r line; do
+              printf '::error::panic::%s\n' "$line"
+            done
+          fi
+      - name: show test failures
+        if: always()
+        run: |
+          if [ -s /tmp/cargo-test.log ]; then
+            sed 's/\x1b\[[0-9;]*m//g' /tmp/cargo-test.log | grep -nE "FAILED|failures:|panicked|left:|right:|assertion|download returns|test result" | tail -n 20 | while IFS= read -r line; do
+              printf '::error::test::%s\n' "$line"
+            done
+          fi

@@ -88,7 +88,7 @@ fn build_smtp_message(
     Message::builder()
         .from(from.clone())
         .to(recipient)
-        .subject(message.subject)
+        .subject(message.subject.clone())
         .multipart(
             MultiPart::alternative()
                 .singlepart(SinglePart::plain(message.plain_text.clone()))
@@ -106,7 +106,7 @@ mod tests {
     fn smtp_message_contains_both_alternative_parts() {
         let from = "sender@example.test".parse().unwrap();
         let message = EmailMessage {
-            subject: "Example subject",
+            subject: "Example subject".to_owned(),
             plain_text: "plain example".to_owned(),
             html: "<p>html example</p>".to_owned(),
         };

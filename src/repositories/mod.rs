@@ -11,6 +11,7 @@ pub mod agent_administration_repository;
 pub mod agent_credential_repository;
 pub mod agent_identity_repository;
 pub mod authentication_rate_limit_repository;
+pub mod communication_repository;
 pub mod community_administration_repository;
 pub mod community_post_research_finding_repository;
 pub mod community_repository;

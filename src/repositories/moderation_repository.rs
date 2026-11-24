@@ -23,136 +23,14 @@ pub async fn create_report(
     description: &str,
 ) -> Result<(Uuid, DateTime<Utc>), AppError> {
     let category = category.as_database_value();
-    let inserted = match target {
-        ModerationReportTarget::Account(target_id) => {
-            sqlx::query_as::<_, (Uuid, DateTime<Utc>)>(
-                "INSERT INTO moderation_reports (reporter_account_id, target_account_id, category, description)
-                SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
-                JOIN accounts target ON target.id = $2 AND target.account_status = 'active'
-                WHERE reporter.id = $1 AND reporter.account_status = 'active'
-                    AND reporter.email_verified_at IS NOT NULL AND reporter.id <> target.id
-                ON CONFLICT DO NOTHING RETURNING id, created_at",
-            )
-            .bind(reporter_account_id)
-            .bind(target_id)
-            .bind(category)
-            .bind(description)
-            .fetch_optional(pool)
-            .await
-        }
-        ModerationReportTarget::Community(target_id) => {
-            sqlx::query_as::<_, (Uuid, DateTime<Utc>)>(
-                "INSERT INTO moderation_reports (reporter_account_id, target_community_id, category, description)
-                SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
-                JOIN communities target ON target.id = $2 AND target.lifecycle_status = 'active'
-                WHERE reporter.id = $1 AND reporter.account_status = 'active'
-                    AND reporter.email_verified_at IS NOT NULL
-                    AND (target.visibility = 'public' OR EXISTS (
-                        SELECT 1 FROM community_members membership
-                        WHERE membership.community_id = target.id AND membership.account_id = reporter.id
-                            AND membership.membership_status = 'active'
-                    ))
-                ON CONFLICT DO NOTHING RETURNING id, created_at",
-            )
-            .bind(reporter_account_id)
-            .bind(target_id)
-            .bind(category)
-            .bind(description)
-            .fetch_optional(pool)
-            .await
-        }
-        ModerationReportTarget::Post(target_id) => {
-            sqlx::query_as::<_, (Uuid, DateTime<Utc>)>(
-                "INSERT INTO moderation_reports (reporter_account_id, target_post_id, category, description)
-                SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
-                JOIN community_posts target ON target.id = $2 AND target.lifecycle_status IN ('active', 'locked')
-                JOIN communities community ON community.id = target.community_id AND community.lifecycle_status = 'active'
-                WHERE reporter.id = $1 AND reporter.account_status = 'active'
-                    AND reporter.email_verified_at IS NOT NULL
-                    AND (community.visibility = 'public' OR EXISTS (
-                        SELECT 1 FROM community_members membership
-                        WHERE membership.community_id = community.id AND membership.account_id = reporter.id
-                            AND membership.membership_status = 'active'
-                    ))
-                ON CONFLICT DO NOTHING RETURNING id, created_at",
-            )
-            .bind(reporter_account_id)
-            .bind(target_id)
-            .bind(category)
-            .bind(description)
-            .fetch_optional(pool)
-            .await
-        }
-        ModerationReportTarget::Comment(target_id) => {
-            sqlx::query_as::<_, (Uuid, DateTime<Utc>)>(
-                "INSERT INTO moderation_reports (reporter_account_id, target_comment_id, category, description)
-                SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
-                JOIN community_post_comments target ON target.id = $2 AND target.lifecycle_status = 'active'
-                JOIN community_posts post ON post.id = target.post_id AND post.lifecycle_status IN ('active', 'locked')
-                JOIN communities community ON community.id = post.community_id AND community.lifecycle_status = 'active'
-                WHERE reporter.id = $1 AND reporter.account_status = 'active'
-                    AND reporter.email_verified_at IS NOT NULL
-                    AND (community.visibility = 'public' OR EXISTS (
-                        SELECT 1 FROM community_members membership
-                        WHERE membership.community_id = community.id AND membership.account_id = reporter.id
-                            AND membership.membership_status = 'active'
-                    ))
-                ON CONFLICT DO NOTHING RETURNING id, created_at",
-            )
-            .bind(reporter_account_id)
-            .bind(target_id)
-            .bind(category)
-            .bind(description)
-            .fetch_optional(pool)
-            .await
-        }
-        ModerationReportTarget::ResearchProject(target_id) => {
-            sqlx::query_as::<_, (Uuid, DateTime<Utc>)>(
-                "INSERT INTO moderation_reports (reporter_account_id, target_research_project_id, category, description)
-                SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
-                JOIN research_projects target ON target.id = $2 AND target.project_status = 'active'
-                JOIN human_actor_identities human ON human.account_id = reporter.id
-                WHERE reporter.id = $1 AND reporter.account_status = 'active'
-                    AND reporter.email_verified_at IS NOT NULL
-                    AND (target.visibility = 'public' OR EXISTS (
-                        SELECT 1 FROM research_project_members member
-                        WHERE member.project_id = target.id AND member.actor_id = human.actor_id
-                            AND member.membership_status = 'active'
-                    ))
-                ON CONFLICT DO NOTHING RETURNING id, created_at",
-            )
-            .bind(reporter_account_id)
-            .bind(target_id)
-            .bind(category)
-            .bind(description)
-            .fetch_optional(pool)
-            .await
-        }
-        ModerationReportTarget::ResearchFinding(target_id) => {
-            sqlx::query_as::<_, (Uuid, DateTime<Utc>)>(
-                "INSERT INTO moderation_reports (reporter_account_id, target_research_finding_id, category, description)
-                SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
-                JOIN research_findings target ON target.id = $2 AND target.finding_status IN ('published', 'retracted')
-                JOIN research_projects project ON project.id = target.project_id AND project.project_status = 'active'
-                JOIN human_actor_identities human ON human.account_id = reporter.id
-                WHERE reporter.id = $1 AND reporter.account_status = 'active'
-                    AND reporter.email_verified_at IS NOT NULL
-                    AND (project.visibility = 'public' OR EXISTS (
-                        SELECT 1 FROM research_project_members member
-                        WHERE member.project_id = project.id AND member.actor_id = human.actor_id
-                            AND member.membership_status = 'active'
-                    ))
-                ON CONFLICT DO NOTHING RETURNING id, created_at",
-            )
-            .bind(reporter_account_id)
-            .bind(target_id)
-            .bind(category)
-            .bind(description)
-            .fetch_optional(pool)
-            .await
-        }
-    }
-    .map_err(|_| AppError::Internal)?;
+    let inserted = sqlx::query_as::<_, (Uuid, DateTime<Utc>)>(target_report_insert_sql(target))
+        .bind(reporter_account_id)
+        .bind(target_id(target))
+        .bind(category)
+        .bind(description)
+        .fetch_optional(pool)
+        .await
+        .map_err(|_| AppError::Internal)?;
 
     if let Some(record) = inserted {
         return Ok(record);
@@ -161,6 +39,151 @@ pub async fn create_report(
         return Err(ModerationError::DuplicateActiveReport.into());
     }
     Err(ModerationError::ReportTargetUnavailable.into())
+}
+
+/// The `INSERT ... SELECT` that validates the target, the reporter, and the
+/// reporter's visibility before creating a report. Each target kind has its own
+/// join conditions; every branch binds the same four values in the same order.
+fn target_report_insert_sql(target: ModerationReportTarget) -> &'static str {
+    match target {
+        ModerationReportTarget::Account(_) => {
+            "INSERT INTO moderation_reports (reporter_account_id, target_account_id, category, description)
+            SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
+            JOIN accounts target ON target.id = $2 AND target.account_status = 'active'
+            WHERE reporter.id = $1 AND reporter.account_status = 'active'
+                AND reporter.email_verified_at IS NOT NULL AND reporter.id <> target.id
+            ON CONFLICT DO NOTHING RETURNING id, created_at"
+        }
+        ModerationReportTarget::Community(_) => {
+            "INSERT INTO moderation_reports (reporter_account_id, target_community_id, category, description)
+            SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
+            JOIN communities target ON target.id = $2 AND target.lifecycle_status = 'active'
+            WHERE reporter.id = $1 AND reporter.account_status = 'active'
+                AND reporter.email_verified_at IS NOT NULL
+                AND (target.visibility = 'public' OR EXISTS (
+                    SELECT 1 FROM community_members membership
+                    WHERE membership.community_id = target.id AND membership.account_id = reporter.id
+                        AND membership.membership_status = 'active'
+                ))
+            ON CONFLICT DO NOTHING RETURNING id, created_at"
+        }
+        ModerationReportTarget::Post(_) => {
+            "INSERT INTO moderation_reports (reporter_account_id, target_post_id, category, description)
+            SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
+            JOIN community_posts target ON target.id = $2 AND target.lifecycle_status IN ('active', 'locked')
+            JOIN communities community ON community.id = target.community_id AND community.lifecycle_status = 'active'
+            WHERE reporter.id = $1 AND reporter.account_status = 'active'
+                AND reporter.email_verified_at IS NOT NULL
+                AND (community.visibility = 'public' OR EXISTS (
+                    SELECT 1 FROM community_members membership
+                    WHERE membership.community_id = community.id AND membership.account_id = reporter.id
+                        AND membership.membership_status = 'active'
+                ))
+            ON CONFLICT DO NOTHING RETURNING id, created_at"
+        }
+        ModerationReportTarget::Comment(_) => {
+            "INSERT INTO moderation_reports (reporter_account_id, target_comment_id, category, description)
+            SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
+            JOIN community_post_comments target ON target.id = $2 AND target.lifecycle_status = 'active'
+            JOIN community_posts post ON post.id = target.post_id AND post.lifecycle_status IN ('active', 'locked')
+            JOIN communities community ON community.id = post.community_id AND community.lifecycle_status = 'active'
+            WHERE reporter.id = $1 AND reporter.account_status = 'active'
+                AND reporter.email_verified_at IS NOT NULL
+                AND (community.visibility = 'public' OR EXISTS (
+                    SELECT 1 FROM community_members membership
+                    WHERE membership.community_id = community.id AND membership.account_id = reporter.id
+                        AND membership.membership_status = 'active'
+                ))
+            ON CONFLICT DO NOTHING RETURNING id, created_at"
+        }
+        ModerationReportTarget::ResearchProject(_) => {
+            "INSERT INTO moderation_reports (reporter_account_id, target_research_project_id, category, description)
+            SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
+            JOIN research_projects target ON target.id = $2 AND target.project_status = 'active'
+            JOIN human_actor_identities human ON human.account_id = reporter.id
+            WHERE reporter.id = $1 AND reporter.account_status = 'active'
+                AND reporter.email_verified_at IS NOT NULL
+                AND (target.visibility = 'public' OR EXISTS (
+                    SELECT 1 FROM research_project_members member
+                    WHERE member.project_id = target.id AND member.actor_id = human.actor_id
+                        AND member.membership_status = 'active'
+                ))
+            ON CONFLICT DO NOTHING RETURNING id, created_at"
+        }
+        ModerationReportTarget::ResearchFinding(_) => {
+            "INSERT INTO moderation_reports (reporter_account_id, target_research_finding_id, category, description)
+            SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
+            JOIN research_findings target ON target.id = $2 AND target.finding_status IN ('published', 'retracted')
+            JOIN research_projects project ON project.id = target.project_id AND project.project_status = 'active'
+            JOIN human_actor_identities human ON human.account_id = reporter.id
+            WHERE reporter.id = $1 AND reporter.account_status = 'active'
+                AND reporter.email_verified_at IS NOT NULL
+                AND (project.visibility = 'public' OR EXISTS (
+                    SELECT 1 FROM research_project_members member
+                    WHERE member.project_id = project.id AND member.actor_id = human.actor_id
+                        AND member.membership_status = 'active'
+                ))
+            ON CONFLICT DO NOTHING RETURNING id, created_at"
+        }
+        ModerationReportTarget::Conversation(_) => {
+            "INSERT INTO moderation_reports (reporter_account_id, target_conversation_id, category, description)
+            SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
+            JOIN conversations target ON target.id = $2 AND target.lifecycle_status IN ('active', 'archived')
+            WHERE reporter.id = $1 AND reporter.account_status = 'active'
+                AND reporter.email_verified_at IS NOT NULL
+                AND EXISTS (
+                    SELECT 1 FROM conversation_members membership
+                    WHERE membership.conversation_id = target.id AND membership.account_id = reporter.id
+                        AND membership.membership_status = 'active'
+                )
+            ON CONFLICT DO NOTHING RETURNING id, created_at"
+        }
+        ModerationReportTarget::Message(_) => {
+            "INSERT INTO moderation_reports (reporter_account_id, target_message_id, category, description)
+            SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
+            JOIN messages target ON target.id = $2
+            JOIN conversations conversation ON conversation.id = target.conversation_id
+                AND conversation.lifecycle_status IN ('active', 'archived')
+            WHERE reporter.id = $1 AND reporter.account_status = 'active'
+                AND reporter.email_verified_at IS NOT NULL
+                AND EXISTS (
+                    SELECT 1 FROM conversation_members membership
+                    WHERE membership.conversation_id = conversation.id AND membership.account_id = reporter.id
+                        AND membership.membership_status = 'active'
+                )
+            ON CONFLICT DO NOTHING RETURNING id, created_at"
+        }
+        ModerationReportTarget::Media(_) => {
+            "INSERT INTO moderation_reports (reporter_account_id, target_media_id, category, description)
+            SELECT reporter.id, target.id, $3, $4 FROM accounts reporter
+            JOIN media_objects target ON target.id = $2
+            WHERE reporter.id = $1 AND reporter.account_status = 'active'
+                AND reporter.email_verified_at IS NOT NULL
+                AND (target.owner_account_id = reporter.id
+                    OR (target.resource_type = 'message' AND EXISTS (
+                        SELECT 1 FROM messages message
+                        JOIN conversation_members membership ON membership.conversation_id = message.conversation_id
+                            AND membership.account_id = reporter.id
+                            AND membership.membership_status = 'active'
+                        WHERE message.id = target.resource_id
+                    )))
+            ON CONFLICT DO NOTHING RETURNING id, created_at"
+        }
+    }
+}
+
+fn target_id(target: ModerationReportTarget) -> Uuid {
+    match target {
+        ModerationReportTarget::Account(id)
+        | ModerationReportTarget::Community(id)
+        | ModerationReportTarget::Post(id)
+        | ModerationReportTarget::Comment(id)
+        | ModerationReportTarget::ResearchProject(id)
+        | ModerationReportTarget::ResearchFinding(id)
+        | ModerationReportTarget::Conversation(id)
+        | ModerationReportTarget::Message(id)
+        | ModerationReportTarget::Media(id) => id,
+    }
 }
 
 async fn report_exists_for_target(
@@ -190,6 +213,9 @@ fn target_database_column(target: ModerationReportTarget) -> (&'static str, Uuid
         ModerationReportTarget::Comment(id) => ("target_comment_id", id),
         ModerationReportTarget::ResearchProject(id) => ("target_research_project_id", id),
         ModerationReportTarget::ResearchFinding(id) => ("target_research_finding_id", id),
+        ModerationReportTarget::Conversation(id) => ("target_conversation_id", id),
+        ModerationReportTarget::Message(id) => ("target_message_id", id),
+        ModerationReportTarget::Media(id) => ("target_media_id", id),
     }
 }
 

@@ -9,7 +9,6 @@ use axum::{
     http::{Request, StatusCode, header},
 };
 use base64::{Engine, engine::general_purpose::STANDARD};
-use rand::{RngCore, rngs::OsRng};
 use peerfora_api::{
     app::build_app,
     configs::settings::Settings,
@@ -18,6 +17,7 @@ use peerfora_api::{
     interfaces::email_sender::{EmailMessage, EmailSender},
     services::admin_auth::commands::provision_first_administrator_command::provision_first_administrator,
 };
+use rand::{RngCore, rngs::OsRng};
 use sqlx::PgPool;
 use totp_rs::{Builder, Secret};
 use tower::ServiceExt;
@@ -119,6 +119,7 @@ fn test_settings(database_url: String, encryption_key: String) -> Settings {
         smtp_username: None,
         smtp_password: None,
         smtp_from: None,
+        media_storage_base_path: "./target/phase-four-test-media".to_owned(),
         public_url: TEST_PUBLIC_URL.to_owned(),
         google_oidc: None,
         apple_oidc: None,

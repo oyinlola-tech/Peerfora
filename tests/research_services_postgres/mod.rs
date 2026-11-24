@@ -84,6 +84,7 @@ pub fn test_app_state(database: PgPool, database_url: String) -> AppState {
         smtp_username: None,
         smtp_password: None,
         smtp_from: None,
+        media_storage_base_path: "./target/phase-four-test-media".to_owned(),
         public_url: TEST_PUBLIC_URL.to_owned(),
         google_oidc: None,
         apple_oidc: None,
