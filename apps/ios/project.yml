@@ -21,6 +21,7 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: Peerfora
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
     info:
+      path: Peerfora/Info.plist
       properties:
         PEERFORA_API_BASE_URL: http://127.0.0.1:3000
         CFBundleURLTypes:
@@ -41,3 +42,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_NSExtension_NSExtensionPointIdentifier: com.apple.widgetkit-extension
         SKIP_INSTALL: YES
+    info:
+      path: PeerforaWidgets/Info.plist
+      properties:
+        CFBundleDisplayName: Peerfora Widgets
