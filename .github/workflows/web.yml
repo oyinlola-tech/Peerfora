@@ -1,5 +1,8 @@
 name: Web build
 
+permissions:
+  contents: read
+
 on:
   push:
     paths:
